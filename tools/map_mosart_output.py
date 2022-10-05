@@ -41,33 +41,33 @@ def map_mosart_variable(sFilename_out,sTitle, sUnit, aData, aExtent_in=None):
     dLat_max = -90
     dLon_min = 180
     dLon_max = -180
-    pDriver = ogr.GetDriverByName('GeoJSON')
-    pDataset = pDriver.Open(sFilename_json0, gdal.GA_ReadOnly)
-    pLayer = pDataset.GetLayer(0)
-    for pFeature in pLayer:
-        pGeometry_in = pFeature.GetGeometryRef()
-        sGeometry_type = pGeometry_in.GetGeometryName()
-        lID =0 
-        if sGeometry_type =='POLYGON':
-            dummy0 = loads( pGeometry_in.ExportToWkt() )
-            aCoords_gcs = dummy0.exterior.coords
-            aCoords_gcs= np.array(aCoords_gcs)
-            nvertex = len(aCoords_gcs)
-            for i in range(nvertex):
-                dLon = aCoords_gcs[i][0]
-                dLat = aCoords_gcs[i][1]
-                if dLon > dLon_max:
-                    dLon_max = dLon
-                if dLon < dLon_min:
-                    dLon_min = dLon
-                if dLat > dLat_max:
-                    dLat_max = dLat
-                if dLat < dLat_min:
-                    dLat_min = dLat
-            polygon = mpatches.Polygon(aCoords_gcs[:,0:2], closed=True, linewidth=0.25, \
-                alpha=0.8, edgecolor = 'black',facecolor='none', \
-                    transform=ccrs.PlateCarree() )
-            ax.add_patch(polygon)  
+    #pDriver = ogr.GetDriverByName('GeoJSON')
+    #pDataset = pDriver.Open(sFilename_json0, gdal.GA_ReadOnly)
+    #pLayer = pDataset.GetLayer(0)
+    #for pFeature in pLayer:
+    #    pGeometry_in = pFeature.GetGeometryRef()
+    #    sGeometry_type = pGeometry_in.GetGeometryName()
+    #    lID =0 
+    #    if sGeometry_type =='POLYGON':
+    #        dummy0 = loads( pGeometry_in.ExportToWkt() )
+    #        aCoords_gcs = dummy0.exterior.coords
+    #        aCoords_gcs= np.array(aCoords_gcs)
+    #        nvertex = len(aCoords_gcs)
+    #        for i in range(nvertex):
+    #            dLon = aCoords_gcs[i][0]
+    #            dLat = aCoords_gcs[i][1]
+    #            if dLon > dLon_max:
+    #                dLon_max = dLon
+    #            if dLon < dLon_min:
+    #                dLon_min = dLon
+    #            if dLat > dLat_max:
+    #                dLat_max = dLat
+    #            if dLat < dLat_min:
+    #                dLat_min = dLat
+    #        polygon = mpatches.Polygon(aCoords_gcs[:,0:2], closed=True, linewidth=0.25, \
+    #            alpha=0.8, edgecolor = 'black',facecolor='none', \
+    #                transform=ccrs.PlateCarree() )
+    #        ax.add_patch(polygon)  
 
     cmap = cm.get_cmap('Spectral')
     cmap_reversed = cmap.reversed()
@@ -93,14 +93,14 @@ def map_mosart_variable(sFilename_out,sTitle, sUnit, aData, aExtent_in=None):
             for k in range(nvertex):
                 aLocation[k,0] = avertex[k]['dLongitude_degree']
                 aLocation[k,1] = avertex[k]['dLatitude_degree']
-                #if aLocation[k,0] > dLon_max:
-                #    dLon_max = aLocation[k,0]
-                #if aLocation[k,0] < dLon_min:
-                #    dLon_min = aLocation[k,0]
-                #if aLocation[k,1] > dLat_max:
-                #    dLat_max = aLocation[k,1]
-                #if aLocation[k,1] < dLat_min:
-                #    dLat_min = aLocation[k,1]
+                if aLocation[k,0] > dLon_max:
+                    dLon_max = aLocation[k,0]
+                if aLocation[k,0] < dLon_min:
+                    dLon_min = aLocation[k,0]
+                if aLocation[k,1] > dLat_max:
+                    dLat_max = aLocation[k,1]
+                if aLocation[k,1] < dLat_min:
+                    dLat_min = aLocation[k,1]
             color_index = (dummy-dData_min ) /(dData_max - dData_min )
             rgba = cmap_reversed(color_index)
             polygon = mpatches.Polygon(aLocation, closed=True, linewidth=0.3,\
@@ -153,7 +153,7 @@ def map_mosart_variable(sFilename_out,sTitle, sUnit, aData, aExtent_in=None):
 def map_mosart_output():
 
     iYear_start = 1979
-    iYear_end = 1980
+    iYear_end = 2008
     iMonth_start=1
     iMonth_end=12
 
@@ -163,16 +163,25 @@ def map_mosart_output():
     sWorkspace_analysis_case = '/compyfs/liao313/04model/e3sm/sag/analysis/e3sm20220701048/'
 
     sVariable_discharge  = 'RIVER_DISCHARGE_OVER_LAND_LIQ'
+    sVariable_surface  = 'QSUB_LIQ'
+    sVariable_subsurface  = 'QSUR_LIQ'
     sTitle='River discharge'
+    sTitle='Surface runoff'
+    sTitle='Subsurface runoff'
+    sUnit = r'Units: $m^{3} s^{-1}$'
     sUnit = r'Units: $m^{3} s^{-1}$'
     if not os.path.exists(sWorkspace_analysis_case):
         os.makedirs(sWorkspace_analysis_case)  
 
     aExtent_in = None #[-153,-143, 65,75]
 
+    ncell = 442
+
     for iYear in range(iYear_start, iYear_end+1):
 
         sYear =   "{:04d}".format(iYear)
+
+        aData_year = np.full( (12, ncell), -9999, dtype=float  )
         for iMonth in range(iMonth_start, iMonth_end + 1):
             sMonth = str(iMonth).zfill(2)           
     
@@ -191,12 +200,21 @@ def map_mosart_output():
             sFilename_out = sWorkspace_analysis_case + slash + 'discharge' + sYear + sMonth + '.png'
             
             for sKey, aValue in aDatasets.variables.items():
-                if sKey.lower() == sVariable_discharge.lower() :
-
-                    aData_out = ((aValue[:]).data)[0]     
-
-                    map_mosart_variable(sFilename_out,sTitle, sUnit, aData_out, aExtent_in=aExtent_in)
+                if sKey.lower() == sVariable_surface.lower():
+                    aData_out = ((aValue[:]).data)[0]    
+                    aData_year[iMonth-1] =  aData_out
+                #if sKey.lower() == sVariable_subsurface.lower() :
+                #    aData_out = ((aValue[:]).data)[0]    
+                #    aData_year[iMonth-1] =  aData_out
+                    #map_mosart_variable(sFilename_out,sTitle, sUnit, aData_out, aExtent_in=aExtent_in)
                     break
+                    
+        sFilename_out = sWorkspace_analysis_case + slash + 'surface_runoff' + sYear + '.png'
+        aData_year1 = np.mean(aData_year, axis=0)
+
+        print( np.sum(aData_year1))
+            
+        #map_mosart_variable(sFilename_out,sTitle, sUnit, aData_year1, aExtent_in=aExtent_in)
                     
 
         

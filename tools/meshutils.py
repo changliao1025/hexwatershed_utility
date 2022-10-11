@@ -3,8 +3,8 @@
 import json
 import numpy as np
 
-# --------------------------------------------------------------
-# --------------------------------------------------------------
+# -----------------------------------------------------
+# -----------------------------------------------------
 def meshjson_dnID(MeshJSONfile):
 
     """
@@ -29,12 +29,12 @@ def meshjson_dnID(MeshJSONfile):
         Mesh = json.load(json_file)
 
     # init lists
-    ID = np.arange(ncell)
+    ncell = len(Mesh)
+    ID = np.arange(ncell) + 1 # start ID at 1 not 0
     dnID=list()
     cellID = list()
     cellID_downslope=list()
 
-    ncell = len(Mesh)
     for n in range(ncell):
         pcell = Mesh[n]
         cellID.append(int(pcell['lCellID']))
@@ -59,8 +59,8 @@ def meshjson_dnID(MeshJSONfile):
 # def meshgdf_dnID(Mesh):
     # for icell,thiscell in Mesh.iterrows():
 
-# ------------------------------------------------------------------
-# ------------------------------------------------------------------
+# -----------------------------------------------------
+# -----------------------------------------------------
 def findDownstreamCells(ID,dnID,ipoints,IDtype='mosart'):
     
     """

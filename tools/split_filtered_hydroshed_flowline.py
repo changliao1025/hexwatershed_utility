@@ -1,6 +1,9 @@
-import os
+import os, sys, stat
 from osgeo import ogr, osr, gdal
 import numpy as np
+
+from pathlib import Path
+from os.path import realpath
 
 
 from shapely.wkt import loads
@@ -17,7 +20,43 @@ aFlag_lake=list()
 aLength=list()
 lID_local = 0
 
-sWorkspace_out  = '/compyfs/liao313/00raw/mesh/global/pyflowline'
+#===========================
+#setup workspace path
+#===========================
+sPath_parent = str(Path(__file__).parents[1]) # data is located two dir's up
+sPath_data = realpath( sPath_parent +  '/data/global' )
+sWorkspace_input =  str(Path(sPath_data)  /  'input')
+sWorkspace_output = sPath_parent +  '/data/global/pyflowline'
+
+class TailRecurseException:
+    def __init__(self, args, kwargs):
+        self.args = args
+        self.kwargs = kwargs
+
+def tail_call_optimized(g):
+    """
+    This function decorates a function with tail call
+    optimization. It does this by throwing an exception
+    if it is it's own grandparent, and catching such
+    exceptions to fake the tail call optimization.
+    
+    This function fails if the decorated
+    function recurses in a non-tail context.
+    """
+    def func(*args, **kwargs):
+        f = sys._getframe()
+        if f.f_back and f.f_back.f_back  and f.f_back.f_back.f_code == f.f_code:
+            raise TailRecurseException(args, kwargs)
+        else:
+            while 1:
+                try:
+                    return g(*args, **kwargs)
+                except TailRecurseException as e:
+                    args = e.args
+                    kwargs = e.kwargs
+
+    func.__doc__ = g.__doc__
+    return func
 
 def read_hydroshed_topology(sFilename_filtered_hydroshed_in):
     global aTopology_id
@@ -107,14 +146,17 @@ def find_upstream(lRiverID_in):
         aTopology_downid0 = np.array(aTopology_downid).ravel()
         index = np.where(aTopology_downid0 == lRiverID_in)
         if len(index[0]) ==0 :            
-            return 1
+            nUpstream=0
+            aUpstreamid= None
+            aUpstreamindex = None
         else:
             nUpstream = len(index[0])
             aUpstreamid = aTopology_id0[index[0]]
             aUpstreamindex = index[0]
 
-            return nUpstream, aUpstreamid, aUpstreamindex
-       
+        return nUpstream, aUpstreamid, aUpstreamindex
+    
+    @tail_call_optimized
     def tag_upstream(lRiverID_in):
         global lID_local
         if(check_head_water(lRiverID_in)==1):            
@@ -134,6 +176,10 @@ def find_upstream(lRiverID_in):
                 pass
     
     lID_local = 0
+
+    index = np.where(np.array(aTopology_id).ravel() == lRiverID_in)
+    pFlowline = aFlowline[ index[0] ]
+    aFlowline_out.append(pFlowline)
 
     tag_upstream(lRiverID_in)
             
@@ -173,10 +219,11 @@ def split_filtered_hydroshed_flowline():
         if lNext_down == 0: #this is a outlet, however, it may be associated with a lake instead of ocean
             if iFlag_lake == 0:   
                 sBasin =    "{:05d}".format(iBasin)
+                sRiver =  "{:0d}".format(lRiverID)
                 lID_local = 0
                 aFlowline_basin =find_upstream(lRiverID)                                         
                 #save as a geojson
-                sFilename_json_in =  sWorkspace_out + '/basin' + sBasin+ '.geojson'
+                sFilename_json_in =  sWorkspace_output + '/river' + sRiver+ '.geojson'
                 export_flowline_to_geojson(aFlowline_basin, sFilename_json_in)
                 iBasin = iBasin + 1                
             else:

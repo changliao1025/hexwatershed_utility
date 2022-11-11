@@ -12,6 +12,9 @@ from shapely.geometry import  MultiLineString, mapping, shape
 from pyflowline.formats.convert_coordinates import convert_gcs_coordinates_to_flowline
 from pyflowline.formats.export_flowline import export_flowline_to_geojson
 
+
+sys.setrecursionlimit(10000)
+
 aTopology=list()
 aTopology_id=list()
 aTopology_downid=list()
@@ -27,6 +30,7 @@ sPath_parent = str(Path(__file__).parents[1]) # data is located two dir's up
 sPath_data = realpath( sPath_parent +  '/data/' )
 sWorkspace_input =  str(Path(sPath_data)  /  'input')
 sWorkspace_output = sPath_parent +  '/data/conus/pyflowline'
+
 
 class TailRecurseException(Exception):
     def __init__(self, args, kwargs):
@@ -157,7 +161,7 @@ def find_upstream(lRiverID_in):
 
         return nUpstream, aUpstreamid, aUpstreamindex
     
-    @tail_call_optimized
+    #@tail_call_optimized
     def tag_upstream(lRiverID_in):
         global lID_local
         if(check_head_water(lRiverID_in)==1):            
@@ -165,14 +169,21 @@ def find_upstream(lRiverID_in):
         else:
             nUpstream, aUpstreamid, aUpstreamindex = find_upstream_flowline(lRiverID_in)
             if nUpstream > 0:                
-                for j in range(nUpstream):
-                    pFlowline = aFlowline[ aUpstreamindex[j] ]                    
+                if nUpstream == 1:
+                    pFlowline = aFlowline[ aUpstreamindex[0] ]                    
                     pFlowline.lFlowlineID = lID_local
                     aFlowline_out.append(pFlowline)
                     lID_local = lID_local + 1
-                    tag_upstream(  aUpstreamid[j]  )            
+                    tag_upstream(  aUpstreamid[0]  )          
+                else:
+                    for j in range(nUpstream):
+                        pFlowline = aFlowline[ aUpstreamindex[j] ]                    
+                        pFlowline.lFlowlineID = lID_local
+                        aFlowline_out.append(pFlowline)
+                        lID_local = lID_local + 1
+                        tag_upstream(  aUpstreamid[j]  )            
 
-                pass
+                    pass
             else:
                 pass
     
@@ -197,7 +208,7 @@ def split_filtered_hydroshed_flowline():
     global lID_local
 
     sFilename_filtered_hydroshed = sPath_parent  + '/data/conus/hydroshed_conus.geojson'
-    # '/compyfs/liao313/00raw/mesh/global/filtered_12p5_2p5/filtered_12p5_2p5.shp'
+    sFilename_filtered_hydroshed = '/compyfs/liao313/00raw/mesh/conus/hydroshed_conus.geojson'
     if os.path.isfile(sFilename_filtered_hydroshed):
         pass
     else:

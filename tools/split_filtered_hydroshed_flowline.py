@@ -24,11 +24,11 @@ lID_local = 0
 #setup workspace path
 #===========================
 sPath_parent = str(Path(__file__).parents[1]) # data is located two dir's up
-sPath_data = realpath( sPath_parent +  '/data/global' )
+sPath_data = realpath( sPath_parent +  '/data/' )
 sWorkspace_input =  str(Path(sPath_data)  /  'input')
-sWorkspace_output = sPath_parent +  '/data/global/pyflowline'
+sWorkspace_output = sPath_parent +  '/data/conus/pyflowline'
 
-class TailRecurseException:
+class TailRecurseException(Exception):
     def __init__(self, args, kwargs):
         self.args = args
         self.kwargs = kwargs
@@ -65,7 +65,8 @@ def read_hydroshed_topology(sFilename_filtered_hydroshed_in):
     global aLength
     global aFlag_lake
 
-    pDriver_shapefile = ogr.GetDriverByName('ESRI Shapefile')   
+    #pDriver_shapefile = ogr.GetDriverByName('ESRI Shapefile')   
+    pDriver_shapefile = ogr.GetDriverByName('GeoJSON')  
     pDataset_shapefile = pDriver_shapefile.Open(sFilename_filtered_hydroshed_in, gdal.GA_ReadOnly)
     pLayer_shapefile = pDataset_shapefile.GetLayer(0)
     
@@ -178,11 +179,10 @@ def find_upstream(lRiverID_in):
     lID_local = 0
 
     index = np.where(np.array(aTopology_id).ravel() == lRiverID_in)
-    pFlowline = aFlowline[ index[0] ]
+    pFlowline = aFlowline[ index[0][0] ]
     aFlowline_out.append(pFlowline)
 
-    tag_upstream(lRiverID_in)
-            
+    tag_upstream(lRiverID_in)            
 
     return aFlowline_out
 
@@ -196,7 +196,8 @@ def split_filtered_hydroshed_flowline():
     global aFlag_lake
     global lID_local
 
-    sFilename_filtered_hydroshed = '/compyfs/liao313/00raw/mesh/global/filtered_12p5_2p5/filtered_12p5_2p5.shp'
+    sFilename_filtered_hydroshed = sPath_parent  + '/data/conus/hydroshed_conus.geojson'
+    # '/compyfs/liao313/00raw/mesh/global/filtered_12p5_2p5/filtered_12p5_2p5.shp'
     if os.path.isfile(sFilename_filtered_hydroshed):
         pass
     else:
@@ -228,8 +229,7 @@ def split_filtered_hydroshed_flowline():
                 iBasin = iBasin + 1                
             else:
                 #this is a lake outlet
-                pass
-    
+                pass    
 
 if __name__ == '__main__':
     split_filtered_hydroshed_flowline()

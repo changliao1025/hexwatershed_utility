@@ -7,7 +7,7 @@ from os.path import realpath
 
 
 from shapely.wkt import loads
-from shapely.geometry import  MultiLineString, mapping, shape
+
 
 from pyflowline.formats.convert_coordinates import convert_gcs_coordinates_to_flowline
 from pyflowline.formats.export_flowline import export_flowline_to_geojson
@@ -29,7 +29,7 @@ lID_local = 0
 sPath_parent = str(Path(__file__).parents[1]) # data is located two dir's up
 sPath_data = realpath( sPath_parent +  '/data/' )
 sWorkspace_input =  str(Path(sPath_data)  /  'input')
-sWorkspace_output = sPath_parent +  '/data/conus/pyflowline'
+sWorkspace_output = sPath_parent +  '/data/southamerica/pyflowline'
 
 
 class TailRecurseException(Exception):
@@ -208,7 +208,7 @@ def split_filtered_hydroshed_flowline():
     global lID_local
 
     sFilename_filtered_hydroshed = sPath_parent  + '/data/conus/hydroshed_conus.geojson'
-    sFilename_filtered_hydroshed = '/compyfs/liao313/00raw/mesh/conus/hydroshed_conus.geojson'
+    sFilename_filtered_hydroshed = '/compyfs/liao313/00raw/mesh/southamerica/southamerica.geojson'
     if os.path.isfile(sFilename_filtered_hydroshed):
         pass
     else:
@@ -224,6 +224,10 @@ def split_filtered_hydroshed_flowline():
     for i in range(nfeature_flowline):  
         #get the flowline attribute, we only accept a flowline if it flows into the ocean
         lRiverID = int(aTopology_id[i])   
+        if lRiverID == 60443230:
+            print('l')
+        else:
+            continue
         lNext_down = int(aTopology_downid[i])
         iFlag_lake = int(aFlag_lake[i])
         #other attributes
@@ -232,6 +236,7 @@ def split_filtered_hydroshed_flowline():
             if iFlag_lake == 0:   
                 sBasin =    "{:05d}".format(iBasin)
                 sRiver =  "{:0d}".format(lRiverID)
+                print(sRiver)
                 lID_local = 0
                 aFlowline_basin =find_upstream(lRiverID)                                         
                 #save as a geojson

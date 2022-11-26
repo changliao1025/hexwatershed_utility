@@ -2,10 +2,164 @@ import json
 import os, sys
 from netCDF4 import Dataset
 import numpy as np
-
 from datetime import datetime
+import scipy
 from scipy.io import netcdf
 import getpass
+
+
+
+def find_contributing_cells(aLongitude_in, aLatitude_in, aCellID, aCellID_downslope, dLongitude, dLatitude):
+    """
+    Should the data in 2D? or MPAS based?
+    """
+
+    #find the cell what matches with drainage area?
+   
+       
+    aCellID_downslope=np.array(aCellID_downslope)
+    nCell = aCellID_downslope.shape()
+    aDistance = np.full(nCell, -9999, dtype=float)
+
+    #calculate the distance betwen the cell with other cells
+    #this method is only approximate
+    for i in range(nCell):
+        #this is a very simple function 
+        dummy = np.power(aLongitude_in(i)- dLongitude, 2) + np.power(aLatitude_in[i] - dLatitude ,2)
+        aDistance[i] = np.sqrt( dummy )
+    
+    aIndex_distance = np.argsort(aDistance)
+    #is it possible to have multipl nearest?
+    lCellIndex_nearest= aIndex_distance[0]
+    lCellID_nearest = aCellID[ lCellIndex_nearest ]
+    
+    nSearch = 1    
+
+    for iSearch in range(nSearch):
+        iIndex_dummy = aIndex_distance[iSearch]
+        lCellID = aCellID[iIndex_dummy]
+        aCellID_contribution = list()    
+        aCellIndex_contribution = list()   
+
+        aCellID_downslope_table = [lCellID]
+        aCellIndex_downslope= [iIndex_dummy]
+        iFlag_finished = 0
+        while (iFlag_finished != 1):
+            aCellID_downslope_current= list()
+            nDownslope = len(aCellID_downslope_table)
+            for i in range(nDownslope ):
+                dummy_index = np.where( aCellID_downslope ==  aCellID_downslope_table[i] )
+                if len(dummy_index) > 0:
+                    for j in dummy_index:
+                        lCellID_dummy = aCellID[dummy_index[j]]
+                        aCellIndex_contribution.append( dummy_index[j] )
+                        aCellID_contribution.append( lCellID_dummy )
+                        aCellID_downslope_current.append(lCellID_dummy )
+            pass
+            aCellID_downslope_table = aCellID_downslope_current 
+                
+      
+    return lCellID_nearest,lCellIndex_nearest, aCellID_contribution, aCellIndex_contribution
+
+
+def get_geometry(aLongitude_in, aLatitude_in, aCellID, aCellID_downslope, aArea, pWidth_in = None, pDepth_in = None):
+    """
+    This is the function to retrive the river width, depth and 
+    """
+    #generate the mesh 
+    nCell = len(aLongitude_in)
+
+    aLongitude0 = np.arange(-179.75,179.75,0.5)
+    aLatitude0 = np.arange(-59.75,89.75, 0.5)
+    aLongitude, aLatitude = np.meshgrid(aLongitude0, aLatitude0)
+
+    aLongitude = np.transpose(aLongitude)
+    aLatitude = np.transpose(aLatitude)
+
+    if pWidth_in is None:
+        pWidth = 7.2
+    else:
+        pWidth = pWidth_in
+    if pDepth_in is None:
+        pDepth = 0.27
+    else:
+        pDepth = pDepth_in     
+    
+
+    #initialize runoff and discharge
+    aRunoff = np.full( (nCell, 31 * 365), -9999, dtype = float)
+    aDischarge = np.full( (nCell, 31 * 365), -9999, dtype = float)
+    AMF = np.full( (nCell, 31), -9999, dtype = float)
+    k = 1
+    print('Generating nearest neighbour mapping...')
+    aIndexNearest = np.full((nCell) , -9999, dtype = int)
+  
+    for i in range( nCell):
+        dummy0 = np.power( aLongitude - aLongitude_in(i), 2) 
+        dummy1 = np.power( aLatitude - aLatitude_in(i), 2)
+
+        aDistance = np.sqrt( dummy0 + dummy1 )
+        
+        dummy_index = np.where(aDistance == np.min(aDistance))
+
+       
+        if len(dummy_index) > 0:           
+            index = dummy_index[0]       
+            aIndexNearest[i] = index
+    
+
+    print('Reading daily aRunoff...\n')
+    sWorkspace_runoff=''
+
+    k=0
+    for i in range (1979,2009,1):        
+        si = "{:04d}".format(i)
+        for j in range (1,365,1):
+            sj = "{:04d}".format(j)
+            sFilename = sWorkspace_runoff + '/' + 'RUNOFF05_' + si + '_' + sj + '.mat'
+            #read mat uning 
+            aData =  scipy.io.loadmat(sFilename)
+            aRunoff[:, k] = aData[aIndexNearest]
+            k = k + 1
+       
+    #find contributing cells
+    dummy = np.full( nCell, -9999, dtype = 1 )
+    aCellIndex_all= list()
+    aCellID_all= list()
+    aCellID_contribution_all= list()
+    aCellIndex_contribution_all= list()
+    print('Searching for contribuing area...\n')
+
+    for i in range(0, nCell,1):      
+        lCellID_nearest, lCellIndex_nearest, aCellID_contribution, aCellIndex_contribution = find_contributing_cells(aLongitude_in, aLatitude_in, aCellID, aCellID_downslope, \
+            aArea,  aLongitude_in[i], aLatitude_in[i])   
+        aCellIndex_all.append(lCellIndex_nearest)
+        aCellID_all.append(lCellID_nearest)
+        aCellIndex_contribution_all.append(aCellIndex_contribution)
+
+    print('Mapping Runoff to Discharge...\n')
+
+    #sun up runoff to get discrage
+    for i in range(1, nCell,1):      
+        dummy3 = aCellID_contribution_all[i]
+        dummy0 = aRunoff[dummy3] 
+        dummy1 = aArea[i]
+        dummy2 = dummy0 * dummy1
+        aDischarge[i, :] = np.sum( dummy2  / 1000 / (3 * 60 * 60))
+
+
+    for i in range (1,31,1):
+        tmp = aDischarge[:, (i - 1) * 365 + 1:i * 365]
+        AMF[:, i] = max(tmp, [], 2)
+   
+
+    flood_2yr = np.percentile(AMF, 50, 2)
+
+    rwid = aw * np.power(flood_2yr, 0.52)
+    rdep = ad * np.power(flood_2yr, 0.31)
+
+    return rwid, rdep, flood_2yr
+
 
 def create_unstructure_domain_file_1d(aLon_region, aLat_region, \
    aLonV_region, aLatV_region,  
@@ -50,10 +204,10 @@ def create_unstructure_domain_file_1d(aLon_region, aLat_region, \
     aDimension_list2.append('nv')
     aDimension_tuple2 = tuple(aDimension_list2)
     var = dict()
-    aVariable = ['area','frac','mask','xc','xv','yc','yv']
+    aVariable = ['area','frac','mask','aLongitude_in','xv','aLatitude_in','yv']
     nVariable = len(aVariable)
-    aUnit = ['area','frac','mask','xc','xv','yc','yv']
-    aLongName = ['area','frac','mask','xc','xv','yc','yv']
+    aUnit = ['area','frac','mask','aLongitude_in','xv','aLatitude_in','yv']
+    aLongName = ['area','frac','mask','aLongitude_in','xv','aLatitude_in','yv']
     for i in range(nVariable):
         varname = aVariable[i]
         if varname == 'xv' or varname == 'yv':
@@ -82,9 +236,9 @@ def create_unstructure_domain_file_1d(aLon_region, aLat_region, \
     #for varname in ncid_inq.variables:
     for i in range(nVariable):    
         varname = aVariable[i]
-        if varname == 'xc':
+        if varname == 'aLongitude_in':
             data = aLon_region
-        elif varname == 'yc':
+        elif varname == 'aLatitude_in':
             data = aLat_region
         elif varname == 'xv':
             data = aLonV_region

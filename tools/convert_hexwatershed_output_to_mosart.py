@@ -6,7 +6,9 @@ from datetime import datetime
 import scipy
 from scipy.io import netcdf
 import getpass
+
 from pyflowline.algorithms.auxiliary.gdal_functions import calculate_distance_based_on_lon_lat
+from pyearth.gis.gdal.read.gdal_read_envi_file import gdal_read_envi_file_multiple_band
 
 
 
@@ -103,9 +105,10 @@ def get_geometry(aLongitude_in, aLatitude_in, aCellID, aCellID_downslope, aArea,
 
     #initialize runoff and discharge
     nyear = 2009-1978
-    aRunoff = np.full( (nCell, nyear * 365), -9999, dtype = float)
-    aDischarge = np.full( (nCell, nyear * 365), -9999, dtype = float)
-    AMF = np.full( (nCell, nyear), -9999, dtype = float)
+    nday = nyear * 365
+    aRunoff = np.full( (nday, nCell ), 0.0, dtype = float)
+    aDischarge = np.full( ( nday, nCell), 0.0, dtype = float)
+    AMF = np.full( (nyear, nCell ), 0.0, dtype = float)
     k = 1
     print('Generating nearest neighbour mapping...')
     #aIndexNearest = np.full((nCell) , -9999, dtype = int)
@@ -131,29 +134,29 @@ def get_geometry(aLongitude_in, aLatitude_in, aCellID, aCellID_downslope, aArea,
                 pass
             
         aIndexNearest=np.array(aIndexNearest)
-        aIndexNearest= np.transpose(aIndexNearest)
+        aIndexNearest=np.transpose(aIndexNearest)
         aIndexNearest=tuple(map(tuple, aIndexNearest))
         
         print('Reading daily Runoff...\n')
-        sWorkspace_runoff='/qfs/people/xudo627/ming/runoff'
+        sWorkspace_runoff='/compyfs/liao313/00raw'
 
-        k=0
-        for i in range (1979,2009,1):        
-            si = "{:04d}".format(i)
-            for j in range (1,366,1):
-                sj = "{:0d}".format(j)
-                sFilename = sWorkspace_runoff + '/' + 'RUNOFF05_' + si + '_' + sj + '.mat'
-                #read mat uning 
-                dummy_data =  scipy.io.loadmat(sFilename)
-                aData= np.transpose(dummy_data['ro05'])
-                aRunoff[:,k] = aData[aIndexNearest]
-                k = k + 1
+        #k=0
+        #result_ids = []
+        sFilename = sWorkspace_runoff + '/' + 'runoff.dat'
+        dummy0 = gdal_read_envi_file_multiple_band(sFilename)
+        dummy = dummy0[0]
+        for i in range (nday): 
+            d = dummy[ i,:]
+            c = d[aIndexNearest]
+            c[np.where(c==-9999.0)]=0.0
+            aRunoff[i,:] = c
+        
        
     #find contributing cells
     
     aCellIndex_all= list()
     aCellID_all= list()
-    aCellID_contribution_all= list()
+    #aCellID_contribution_all= list()
     aCellIndex_contribution_all= list()
 
     iFlag_search_contribution_cell=1
@@ -167,6 +170,10 @@ def get_geometry(aLongitude_in, aLatitude_in, aCellID, aCellID_downslope, aArea,
             aCellIndex_all.append(lCellIndex_nearest)
             aCellID_all.append(lCellID_nearest)
             aCellIndex_contribution_all.append(aCellIndex_contribution)
+    
+    #aCellIndex_all = ray.get(aCellIndex_all)
+    #aCellID_all = ray.get(aCellID_all) 
+    #aCellIndex_contribution_all = ray.get(aCellIndex_contribution_all) 
 
     print('Mapping Runoff to Discharge...\n')
     sys.stdout.flush()
@@ -175,21 +182,21 @@ def get_geometry(aLongitude_in, aLatitude_in, aCellID, aCellID_downslope, aArea,
     for i in range(0, nCell,1):      
         dummy3 = aCellIndex_contribution_all[i]
         dummy4 = np.array(dummy3)
-        dummy0 = aRunoff[dummy4] 
+        dummy0 = aRunoff[:,dummy4] 
         dummy1 = aArea[i]
         dummy2 = dummy0 * dummy1
-        dummy4 = np.sum( dummy2 )
+        dummy4 = np.sum( dummy2, 1 )
         #unit conersion
-        aDischarge[i, :] = dummy4  / 1000 / (3 * 60 * 60)
+        aDischarge[:, i] = dummy4  / 1000 / (3 * 60 * 60)
 
 
     for i in range(0,nyear,1):
         dummy_range = np.arange(i * 365, (i+1) * 365 , 1)
-        tmp = aDischarge[:, dummy_range ]
-        AMF[:, i] = np.max(tmp, 1)
+        tmp = aDischarge[dummy_range,: ]
+        AMF[i,:] = np.max(tmp, 0)
    
 
-    aFlood_2yr_out = np.percentile(AMF, 50, 1)
+    aFlood_2yr_out = np.percentile(AMF, 50, 0)
 
     aWidth_out = pWidth * np.power(aFlood_2yr_out, 0.52)
     aDepth_out = pDepth * np.power(aFlood_2yr_out, 0.31)
@@ -198,7 +205,7 @@ def get_geometry(aLongitude_in, aLatitude_in, aCellID, aCellID_downslope, aArea,
 
 
 def create_unstructure_domain_file_1d(aLon_region, aLat_region, \
-   aLonV_region, aLatV_region,  
+   aLonV_region, aLatV_region,  aArea,
     sFilename_domain_file_out):
 
     #sFilename_domain_file_out = '%s/domain_%s_%s.nc' % \
@@ -239,7 +246,7 @@ def create_unstructure_domain_file_1d(aLon_region, aLat_region, \
     aDimension_list2.append('ni')
     aDimension_list2.append('nv')
     aDimension_tuple2 = tuple(aDimension_list2)
-    var = dict()
+    
     aVariable = ['area','frac','mask','xc','xv','yc','yv']
     nVariable = len(aVariable)
     aUnit = ['area','frac','mask','xc','xv','yc','yv']
@@ -268,9 +275,9 @@ def create_unstructure_domain_file_1d(aLon_region, aLat_region, \
     #                           Copy variables
     #
     # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    #for varname in ncid_inq.variables:
-    for i in range(nVariable):    
-        varname = aVariable[i]
+    for sKey, aValue in pDatasets_out.variables.items():
+    #for i in range(nVariable):    
+        varname = sKey#aVariable[i]
         if varname == 'xc':
             data = aLon_region
         elif varname == 'yc':
@@ -298,10 +305,10 @@ def create_unstructure_domain_file_1d(aLon_region, aLat_region, \
             else:
                 #raise NameError('Added area computation')
                 #use different method to get area
-                
+                data = np.array(aArea)
                 pass
         
-        var[varname][:] = data 
+        aValue[:] = data 
 
 
  
@@ -376,8 +383,7 @@ def convert_hexwatershed_json_to_mosart_netcdf(sFilename_json_in, \
             aNh.append(1.0)
             aNr.append(1.0)
             aNt.append(1.0)
-            aRdep.append(1.0)     
-            aRwid.append(1.0)
+            
             aTwid.append(1.0)
 
             
@@ -400,9 +406,8 @@ def convert_hexwatershed_json_to_mosart_netcdf(sFilename_json_in, \
     aCellID = np.array(aCellID)
     aCellID_downslope=np.array(aCellID_downslope)
     aArea=np.array(aArea)
-    aWidth_out, aDepth_out, aFlood_2yr_out = get_geometry(aLongitude_in, aLatitude_in, aCellID, aCellID_downslope, aArea, pWidth_in = None, pDepth_in = None)
-    aRwid = aWidth_out
-    aRdep= aDepth_out
+    aRwid, aRdep, aFlood_2yr_out = get_geometry(aLongitude_in, aLatitude_in, aCellID, aCellID_downslope, aArea, pWidth_in = None, pDepth_in = None)
+    
     
     
     #convert to numpy array
@@ -514,7 +519,7 @@ def convert_hexwatershed_json_to_mosart_netcdf(sFilename_json_in, \
 
   
     create_unstructure_domain_file_1d(aLon_region, aLat_region, \
-    aLonV_region, aLatV_region,     sFilename_mosart_domain_out)  
+    aLonV_region, aLatV_region,  aArea,   sFilename_mosart_domain_out)  
 
     return
 
@@ -530,11 +535,18 @@ if __name__ == '__main__':
         sFilename_mosart_parameter_out = 'mosart_sag_parameter.nc'
         sFilename_mosart_domain_out = 'mosart_sag_domain.nc'
     else:
-        sFilename_json_in='/compyfs/liao313/04model/pyhexwatershed/columbia/pyhexwatershed20221115003/hexwatershed/hexwatershed.json'
-        sFilename_mpas_in='/compyfs/liao313/00raw/mesh/global/lnd_mesh.nc'
-        sFilename_mosart_parameter_in = '/compyfs/inputdata/rof/mosart/MOSART_Global_half_20210616.nc'
-        sFilename_mosart_parameter_out = 'mosart_columbia_parameter.nc'
-        sFilename_mosart_domain_out = 'mosart_columbia_domain.nc'
+        if sRegion == 'susquehanna':
+            sFilename_json_in='/compyfs/liao313/04model/pyhexwatershed/susquehanna/pyhexwatershed20221115001/hexwatershed/hexwatershed.json'
+            sFilename_mpas_in='/qfs/people/liao313/workspace/python/pyhexwatershed_icom/data/susquehanna/input/lnd_cull_mesh.nc'
+            sFilename_mosart_parameter_in = '/compyfs/inputdata/rof/mosart/MOSART_Global_half_20210616.nc'
+            sFilename_mosart_parameter_out = 'mosart_susquehanna_parameter.nc'
+            sFilename_mosart_domain_out = 'mosart_susquehanna_domain.nc'
+        else:
+            sFilename_json_in='/compyfs/liao313/04model/pyhexwatershed/columbia/pyhexwatershed20221115003/hexwatershed/hexwatershed.json'
+            sFilename_mpas_in='/compyfs/liao313/00raw/mesh/global/lnd_mesh.nc'
+            sFilename_mosart_parameter_in = '/compyfs/inputdata/rof/mosart/MOSART_Global_half_20210616.nc'
+            sFilename_mosart_parameter_out = 'mosart_columbia_parameter.nc'
+            sFilename_mosart_domain_out = 'mosart_columbia_domain.nc'
     
     convert_hexwatershed_json_to_mosart_netcdf(sFilename_json_in, \
         sFilename_mpas_in, \

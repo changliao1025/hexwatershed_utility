@@ -6,6 +6,7 @@ from datetime import datetime
 import scipy
 from scipy.io import netcdf
 import getpass
+from pyflowline.algorithms.auxiliary.gdal_functions import calculate_distance_based_on_lon_lat
 
 
 
@@ -18,14 +19,15 @@ def find_contributing_cells(aLongitude_in, aLatitude_in, aCellID, aCellID_downsl
    
        
     aCellID_downslope=np.array(aCellID_downslope)
-    nCell = aCellID_downslope.shape()
+    nCell = aCellID_downslope.shape[0]
+
     aDistance = np.full(nCell, -9999, dtype=float)
 
     #calculate the distance betwen the cell with other cells
     #this method is only approximate
     for i in range(nCell):
         #this is a very simple function 
-        dummy = np.power(aLongitude_in(i)- dLongitude, 2) + np.power(aLatitude_in[i] - dLatitude ,2)
+        dummy = np.power(aLongitude_in[i]- dLongitude, 2) + np.power(aLatitude_in[i] - dLatitude ,2)
         aDistance[i] = np.sqrt( dummy )
     
     aIndex_distance = np.argsort(aDistance)
@@ -33,13 +35,14 @@ def find_contributing_cells(aLongitude_in, aLatitude_in, aCellID, aCellID_downsl
     lCellIndex_nearest= aIndex_distance[0]
     lCellID_nearest = aCellID[ lCellIndex_nearest ]
     
-    nSearch = 1    
+    nSearch = 1 
+    aCellID_contribution = [lCellID_nearest]  
+    aCellIndex_contribution = [lCellIndex_nearest]    
 
     for iSearch in range(nSearch):
         iIndex_dummy = aIndex_distance[iSearch]
         lCellID = aCellID[iIndex_dummy]
-        aCellID_contribution = list()    
-        aCellIndex_contribution = list()   
+          
 
         aCellID_downslope_table = [lCellID]
         aCellIndex_downslope= [iIndex_dummy]
@@ -48,15 +51,23 @@ def find_contributing_cells(aLongitude_in, aLatitude_in, aCellID, aCellID_downsl
             aCellID_downslope_current= list()
             nDownslope = len(aCellID_downslope_table)
             for i in range(nDownslope ):
-                dummy_index = np.where( aCellID_downslope ==  aCellID_downslope_table[i] )
-                if len(dummy_index) > 0:
-                    for j in dummy_index:
+                lCellID_dummy = aCellID_downslope_table[i]
+                dummy_index0 = np.where( aCellID_downslope ==  lCellID_dummy )
+                dummy_index=dummy_index0[0]
+                nUpslope = len(dummy_index) 
+                if nUpslope> 0:
+                    for j in range(nUpslope):
                         lCellID_dummy = aCellID[dummy_index[j]]
                         aCellIndex_contribution.append( dummy_index[j] )
                         aCellID_contribution.append( lCellID_dummy )
                         aCellID_downslope_current.append(lCellID_dummy )
+            
+            if len(aCellID_downslope_current) > 0:
+                aCellID_downslope_table = aCellID_downslope_current 
+            else:
+                iFlag_finished = 1
+            
             pass
-            aCellID_downslope_table = aCellID_downslope_current 
                 
       
     return lCellID_nearest,lCellIndex_nearest, aCellID_contribution, aCellIndex_contribution
@@ -68,13 +79,17 @@ def get_geometry(aLongitude_in, aLatitude_in, aCellID, aCellID_downslope, aArea,
     """
     #generate the mesh 
     nCell = len(aLongitude_in)
+    iFlag_debug = 0
+    if iFlag_debug==1:
+        nCell=100
 
-    aLongitude0 = np.arange(-179.75,179.75,0.5)
-    aLatitude0 = np.arange(-59.75,89.75, 0.5)
+    aLongitude0 = np.arange(-179.75,180,0.5)
+    aLatitude0 = np.arange(-59.75,90, 0.5)
     aLongitude, aLatitude = np.meshgrid(aLongitude0, aLatitude0)
+    nrow, ncolumn = aLongitude.shape
 
-    aLongitude = np.transpose(aLongitude)
-    aLatitude = np.transpose(aLatitude)
+    #aLongitude = np.transpose(aLongitude)
+    #aLatitude = np.transpose(aLatitude)
 
     if pWidth_in is None:
         pWidth = 7.2
@@ -87,78 +102,99 @@ def get_geometry(aLongitude_in, aLatitude_in, aCellID, aCellID_downslope, aArea,
     
 
     #initialize runoff and discharge
-    aRunoff = np.full( (nCell, 31 * 365), -9999, dtype = float)
-    aDischarge = np.full( (nCell, 31 * 365), -9999, dtype = float)
-    AMF = np.full( (nCell, 31), -9999, dtype = float)
+    nyear = 2009-1978
+    aRunoff = np.full( (nCell, nyear * 365), -9999, dtype = float)
+    aDischarge = np.full( (nCell, nyear * 365), -9999, dtype = float)
+    AMF = np.full( (nCell, nyear), -9999, dtype = float)
     k = 1
     print('Generating nearest neighbour mapping...')
-    aIndexNearest = np.full((nCell) , -9999, dtype = int)
-  
-    for i in range( nCell):
-        dummy0 = np.power( aLongitude - aLongitude_in(i), 2) 
-        dummy1 = np.power( aLatitude - aLatitude_in(i), 2)
-
-        aDistance = np.sqrt( dummy0 + dummy1 )
-        
-        dummy_index = np.where(aDistance == np.min(aDistance))
-
-       
-        if len(dummy_index) > 0:           
-            index = dummy_index[0]       
-            aIndexNearest[i] = index
+    #aIndexNearest = np.full((nCell) , -9999, dtype = int)
     
+    iFlag_read_runoff = 1
+    if iFlag_read_runoff ==1:
+        aIndexNearest=list()
+        for i in range(nCell):        
+            dummy0 = np.power( aLongitude - aLongitude_in[i], 2) 
+            dummy1 = np.power( aLatitude - aLatitude_in[i], 2)
+            aDistance = np.sqrt( dummy0 + dummy1 )
+            #aDistance = [ calculate_distance_based_on_lon_lat(aLongitude_in[i], aLatitude_in[i], aLongitude[j,k],aLatitude[j,k]) \
+            #    for j in range(nrow) for k in range(ncolumn) ]
+            distance_min = np.min(aDistance)        
+            dummy_index = np.where(aDistance == distance_min)
+            row_index = dummy_index[0]
+            column_index=dummy_index[1]
+            if len(row_index) ==1:     
+                aIndexNearest.append([row_index[0],column_index[0]])
+            else:
+                #more than one
+                aIndexNearest.append([row_index[0],column_index[0]])
+                pass
+            
+        aIndexNearest=np.array(aIndexNearest)
+        aIndexNearest= np.transpose(aIndexNearest)
+        aIndexNearest=tuple(map(tuple, aIndexNearest))
+        
+        print('Reading daily Runoff...\n')
+        sWorkspace_runoff='/qfs/people/xudo627/ming/runoff'
 
-    print('Reading daily aRunoff...\n')
-    sWorkspace_runoff=''
-
-    k=0
-    for i in range (1979,2009,1):        
-        si = "{:04d}".format(i)
-        for j in range (1,365,1):
-            sj = "{:04d}".format(j)
-            sFilename = sWorkspace_runoff + '/' + 'RUNOFF05_' + si + '_' + sj + '.mat'
-            #read mat uning 
-            aData =  scipy.io.loadmat(sFilename)
-            aRunoff[:, k] = aData[aIndexNearest]
-            k = k + 1
+        k=0
+        for i in range (1979,2009,1):        
+            si = "{:04d}".format(i)
+            for j in range (1,366,1):
+                sj = "{:0d}".format(j)
+                sFilename = sWorkspace_runoff + '/' + 'RUNOFF05_' + si + '_' + sj + '.mat'
+                #read mat uning 
+                dummy_data =  scipy.io.loadmat(sFilename)
+                aData= np.transpose(dummy_data['ro05'])
+                aRunoff[:,k] = aData[aIndexNearest]
+                k = k + 1
        
     #find contributing cells
-    dummy = np.full( nCell, -9999, dtype = 1 )
+    
     aCellIndex_all= list()
     aCellID_all= list()
     aCellID_contribution_all= list()
     aCellIndex_contribution_all= list()
-    print('Searching for contribuing area...\n')
 
-    for i in range(0, nCell,1):      
-        lCellID_nearest, lCellIndex_nearest, aCellID_contribution, aCellIndex_contribution = find_contributing_cells(aLongitude_in, aLatitude_in, aCellID, aCellID_downslope, \
-            aArea,  aLongitude_in[i], aLatitude_in[i])   
-        aCellIndex_all.append(lCellIndex_nearest)
-        aCellID_all.append(lCellID_nearest)
-        aCellIndex_contribution_all.append(aCellIndex_contribution)
+    iFlag_search_contribution_cell=1
+    if iFlag_search_contribution_cell ==1:
+        print('Searching for contribuing area...\n')
+        sys.stdout.flush()
+        for i in range(0, nCell,1):      
+            lCellID_nearest, lCellIndex_nearest, aCellID_contribution, aCellIndex_contribution = find_contributing_cells(aLongitude_in, aLatitude_in, aCellID, aCellID_downslope, \
+              aLongitude_in[i], aLatitude_in[i])   
+
+            aCellIndex_all.append(lCellIndex_nearest)
+            aCellID_all.append(lCellID_nearest)
+            aCellIndex_contribution_all.append(aCellIndex_contribution)
 
     print('Mapping Runoff to Discharge...\n')
+    sys.stdout.flush()
 
     #sun up runoff to get discrage
-    for i in range(1, nCell,1):      
-        dummy3 = aCellID_contribution_all[i]
-        dummy0 = aRunoff[dummy3] 
+    for i in range(0, nCell,1):      
+        dummy3 = aCellIndex_contribution_all[i]
+        dummy4 = np.array(dummy3)
+        dummy0 = aRunoff[dummy4] 
         dummy1 = aArea[i]
         dummy2 = dummy0 * dummy1
-        aDischarge[i, :] = np.sum( dummy2  / 1000 / (3 * 60 * 60))
+        dummy4 = np.sum( dummy2 )
+        #unit conersion
+        aDischarge[i, :] = dummy4  / 1000 / (3 * 60 * 60)
 
 
-    for i in range (1,31,1):
-        tmp = aDischarge[:, (i - 1) * 365 + 1:i * 365]
-        AMF[:, i] = max(tmp, [], 2)
+    for i in range(0,nyear,1):
+        dummy_range = np.arange(i * 365, (i+1) * 365 , 1)
+        tmp = aDischarge[:, dummy_range ]
+        AMF[:, i] = np.max(tmp, 1)
    
 
-    flood_2yr = np.percentile(AMF, 50, 2)
+    aFlood_2yr_out = np.percentile(AMF, 50, 1)
 
-    rwid = aw * np.power(flood_2yr, 0.52)
-    rdep = ad * np.power(flood_2yr, 0.31)
+    aWidth_out = pWidth * np.power(aFlood_2yr_out, 0.52)
+    aDepth_out = pDepth * np.power(aFlood_2yr_out, 0.31)
 
-    return rwid, rdep, flood_2yr
+    return aWidth_out, aDepth_out, aFlood_2yr_out
 
 
 def create_unstructure_domain_file_1d(aLon_region, aLat_region, \
@@ -204,10 +240,10 @@ def create_unstructure_domain_file_1d(aLon_region, aLat_region, \
     aDimension_list2.append('nv')
     aDimension_tuple2 = tuple(aDimension_list2)
     var = dict()
-    aVariable = ['area','frac','mask','aLongitude_in','xv','aLatitude_in','yv']
+    aVariable = ['area','frac','mask','xc','xv','yc','yv']
     nVariable = len(aVariable)
-    aUnit = ['area','frac','mask','aLongitude_in','xv','aLatitude_in','yv']
-    aLongName = ['area','frac','mask','aLongitude_in','xv','aLatitude_in','yv']
+    aUnit = ['area','frac','mask','xc','xv','yc','yv']
+    aLongName = ['area','frac','mask','xc','xv','yc','yv']
     for i in range(nVariable):
         varname = aVariable[i]
         if varname == 'xv' or varname == 'yv':
@@ -219,7 +255,6 @@ def create_unstructure_domain_file_1d(aLon_region, aLat_region, \
 
         pVar = pDatasets_out.createVariable(varname, dtype, dims, fill_value=-9999)
         
-           
         pVar.setncatts( { '_FillValue': -9999 } )
         pVar.setncatts( { 'unit':  aUnit[i] } )
         pVar.setncatts( { 'long name': aLongName[i] } )    
@@ -236,9 +271,9 @@ def create_unstructure_domain_file_1d(aLon_region, aLat_region, \
     #for varname in ncid_inq.variables:
     for i in range(nVariable):    
         varname = aVariable[i]
-        if varname == 'aLongitude_in':
+        if varname == 'xc':
             data = aLon_region
-        elif varname == 'aLatitude_in':
+        elif varname == 'yc':
             data = aLat_region
         elif varname == 'xv':
             data = aLonV_region
@@ -273,6 +308,8 @@ def create_unstructure_domain_file_1d(aLon_region, aLat_region, \
     pDatasets_out.close()
 
     return sFilename_domain_file_out
+
+
 def convert_hexwatershed_json_to_mosart_netcdf(sFilename_json_in, \
     sFilename_mpas_in, \
     sFilename_mosart_parameter_in, \
@@ -357,11 +394,19 @@ def convert_hexwatershed_json_to_mosart_netcdf(sFilename_json_in, \
             
         pass
     
+    aLongitude_in = np.array(aLongitude)
+    aLatitude_in = np.array(aLatitude)
     nCell = len(aCellID)
     aCellID = np.array(aCellID)
     aCellID_downslope=np.array(aCellID_downslope)
-    #convert to numpy array
     aArea=np.array(aArea)
+    aWidth_out, aDepth_out, aFlood_2yr_out = get_geometry(aLongitude_in, aLatitude_in, aCellID, aCellID_downslope, aArea, pWidth_in = None, pDepth_in = None)
+    aRwid = aWidth_out
+    aRdep= aDepth_out
+    
+    
+    #convert to numpy array
+    
     aAreaTotal2=np.array(aDrainage)
     aAreaTotal= aAreaTotal2
     
@@ -377,19 +422,12 @@ def convert_hexwatershed_json_to_mosart_netcdf(sFilename_json_in, \
             aDnID.append(-9999)
         else:
             dummy_index  = np.where(aCellID == lCellID_downslope)
-        
-        
             index = np.reshape(dummy_index, 1)[0]
             aDnID.append(index + 1)
        
-            
     aDnID = np.array(aDnID)
-
-    
     aDomainfrac=np.array(aDomainfrac)
     aElevation=np.array(aElevation)
-    
-   
     aRlen=np.array(aFlowline_length)
     aLon  =np.array(aLongitude)
     aLat =np.array(aLatitude)
@@ -482,12 +520,22 @@ def convert_hexwatershed_json_to_mosart_netcdf(sFilename_json_in, \
 
 
 if __name__ == '__main__':
+    sRegion ='columbia'
 
-    sFilename_json_in='/compyfs/liao313/04model/pyhexwatershed/sag/pyhexwatershed20220607001/hexwatershed/hexwatershed.json'
-    sFilename_mpas_in='/people/liao313/workspace/python/pyhexwatershed_icom/data/sag/input/lnd_mesh.nc'
-    sFilename_mosart_parameter_in = '/compyfs/inputdata/rof/mosart/MOSART_Global_half_20210616.nc'
-    sFilename_mosart_parameter_out = 'mosart_sag_parameter.nc'
-    sFilename_mosart_domain_out = 'mosart_sag_domain.nc'
+    if sRegion == 'sag':
+
+        sFilename_json_in='/compyfs/liao313/04model/pyhexwatershed/sag/pyhexwatershed20220607001/hexwatershed/hexwatershed.json'
+        sFilename_mpas_in='/people/liao313/workspace/python/pyhexwatershed_icom/data/sag/input/lnd_mesh.nc'
+        sFilename_mosart_parameter_in = '/compyfs/inputdata/rof/mosart/MOSART_Global_half_20210616.nc'
+        sFilename_mosart_parameter_out = 'mosart_sag_parameter.nc'
+        sFilename_mosart_domain_out = 'mosart_sag_domain.nc'
+    else:
+        sFilename_json_in='/compyfs/liao313/04model/pyhexwatershed/columbia/pyhexwatershed20221115003/hexwatershed/hexwatershed.json'
+        sFilename_mpas_in='/compyfs/liao313/00raw/mesh/global/lnd_mesh.nc'
+        sFilename_mosart_parameter_in = '/compyfs/inputdata/rof/mosart/MOSART_Global_half_20210616.nc'
+        sFilename_mosart_parameter_out = 'mosart_columbia_parameter.nc'
+        sFilename_mosart_domain_out = 'mosart_columbia_domain.nc'
+    
     convert_hexwatershed_json_to_mosart_netcdf(sFilename_json_in, \
         sFilename_mpas_in, \
             sFilename_mosart_parameter_in,

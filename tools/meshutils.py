@@ -1,18 +1,3 @@
-import os
-import json
-import numpy as np
-
-# try:
-#     from osgeo import ogr, osr
-# except:
-#     from osgeo import gdal
-
-
-# from osgeo import ogr, osr, gdal, gdalconst
-
-# function definitions
-intvector = np.vectorize(np.int_)
-
 # -----------------------------------------------------
 # -----------------------------------------------------
 def meshjson_dnID(MeshJSONfile):
@@ -34,6 +19,10 @@ def meshjson_dnID(MeshJSONfile):
     
     Author: Matt Cooper (matt.cooper@pnnl.gov), Donghui Xu and Chang Liao, PNNL
     """
+    
+    import json
+    import numpy as np
+
 
     with open(MeshJSONfile) as json_file:
         Mesh = json.load(json_file)
@@ -71,7 +60,7 @@ def meshjson_dnID(MeshJSONfile):
 
 # -----------------------------------------------------
 # -----------------------------------------------------
-def findDownstreamCells(ID,dnID,ipoints,IDtype='mosart'):
+def find_downstream_cells(ID,dnID,ipoints,IDtype='mosart'):
     
     """
     find indices and IDs of all cells downstream of each point in a list of points
@@ -98,21 +87,23 @@ def findDownstreamCells(ID,dnID,ipoints,IDtype='mosart'):
     
     Author: Matt Cooper (matt.cooper@pnnl.gov)
     """
+    
+    # imports
+    import numpy as np
 
+    # function definitions
+    intvector = np.vectorize(np.int_)
 
+    # initialize
     ncells = len(ipoints)
+    ID_downstream = []
+    i_downstream = []
 
     # locate the outlet cell from the global dn_ID
     if IDtype == 'mosart':
         ioutlet = intvector(np.where(dnID==-9999)[0])
-        # ioutlet = int(np.where(dnID==-9999)[0])
     elif IDtype == 'hexwatershed':
         ioutlet = intvector(np.where(dnID==-1)[0])
-        # ioutlet = int(np.where(dnID==-1)[0])
-
-    # init the outputs
-    ID_downstream = []
-    i_downstream = []
 
     # loop over all points and find all downstream cells
     for n in range(ncells):
@@ -120,8 +111,7 @@ def findDownstreamCells(ID,dnID,ipoints,IDtype='mosart'):
         idn = ipoints[n]
         dnID_n = []
         dnidx_n = []
-        # while idn != ioutlet:
-        while idn not in ioutlet:
+        while idn not in ioutlet:  # while idn != ioutlet: (if ioutlet is scalar)
             idn = int(np.where(ID==dnID[idn])[0])
             dnID_n.append(int(dnID[idn]))
             dnidx_n.append(idn)
@@ -137,7 +127,7 @@ def findDownstreamCells(ID,dnID,ipoints,IDtype='mosart'):
 
 
 
-def makeDamDependency(Dams,Mesh,searchradius,globalID,Mask,FlowLine):
+def make_dam_dependency(Dams,Mesh,searchradius,globalID,Mask,FlowLine):
 
     """
     find dependent cell IDs for each dam (downstream mesh cells that depend on each dam)
@@ -175,10 +165,13 @@ def makeDamDependency(Dams,Mesh,searchradius,globalID,Mask,FlowLine):
     Author: Matt Cooper (matt.cooper@pnnl.gov), 2023
     """
 
+    import numpy as np
     import inpoly.inpoly2 as inpoly
     from scipy.spatial import KDTree
-    from pyfunclib.libspatial import geoutils as gu
-    from pyfunclib.libdata import datautils as du
+    try:
+        from itertools import izip_longest as zip_longest 
+    except ImportError:
+        from itertools import zip_longest
 
     # Part 1: build the kdtree
     # ------------------------
@@ -195,7 +188,7 @@ def makeDamDependency(Dams,Mesh,searchradius,globalID,Mask,FlowLine):
     # Part 2: find mesh cells in the basin boundary
     # ---------------------------------------------
     xymesh = np.array(Mesh[['X','Y']]) # mesh cell centroids
-    xymask = gu.gdfcoordinatelist(Mask,flatten=False)[0] # boundary
+    xymask = gdf_coordinate_list(Mask,flatten=False)[0] # boundary
     inmask = np.where(inpoly(xymesh,xymask)[0])[0] # indices
     # inmask = list(inpoly.inpoly2(xymesh,xymask)[0]) # boolean
 
@@ -208,7 +201,7 @@ def makeDamDependency(Dams,Mesh,searchradius,globalID,Mask,FlowLine):
     # find the mesh cells that contain a dam by finding the Mesh (or MeshLine) cells nearest each dam. these are the starting points for the downstream walk to find the dependent cells for each dam
     useflowline = False
     if useflowline is True:
-        MeshLine = findCellsOnVectorFlowline(FlowLine,Mesh,meshTree)
+        MeshLine = find_cells_on_vector_flowline(FlowLine,Mesh,meshTree)
         iflowlinedams = KDTree(MeshLine[['X','Y']]).query(Dams[['X','Y']])[1]
         # transform iflowlinedams to the global mesh indices:
         imeshdams = np.array(MeshLine['ID'].iloc[iflowlinedams])
@@ -221,7 +214,7 @@ def makeDamDependency(Dams,Mesh,searchradius,globalID,Mask,FlowLine):
     # Part 4: find cells downstream of each dam
     # -----------------------------------------
 
-    Dams['i_DownstreamCells'],Dams['ID_DownstreamCells'] = findDownstreamCells(
+    Dams['i_DownstreamCells'],Dams['ID_DownstreamCells'] = find_downstream_cells(
         np.array(Mesh['ID']),np.array(Mesh['dnID']),imeshdams
         )
 
@@ -275,18 +268,15 @@ def makeDamDependency(Dams,Mesh,searchradius,globalID,Mask,FlowLine):
         # this puts the Dependent Cells into the data frame (note: use iat to set one element of the gdf not iloc, otherwise we get the slice error)
         # Dams['ID_DependentCells'].iat[idam] = inearby
 
-        # for testing: du.list2file(list(inearby),'test.txt')
-
     # return a uniform-sized padded array
-    return du.padarray(ID_DependentCells)
+    return np.array(list(zip_longest(*ID_DependentCells, fillvalue=np.nan))).T
 
     # If adding to the gdf:
-    # ID_DependentCells = du.padarray(Dams['ID_DependentCells'])
-    # ID_DependentCells = pd.DataFrame(list(Dams['ID_DependentCells'])).fillna(np.nan).values # if du not available
+    # ID_DependentCells = pd.DataFrame(list(Dams['ID_DependentCells'])).fillna(np.nan).values
     # return ID_DependentCells
 
 
-def findCellsOnVectorFlowline(FlowLine,Mesh,meshTree):
+def find_cells_on_vector_flowline(FlowLine,Mesh,meshTree):
 
     """
     find mesh cells that contain a vector flowline vertex
@@ -325,4 +315,41 @@ def findCellsOnVectorFlowline(FlowLine,Mesh,meshTree):
     # # for reference, in one line (still needs to be flattened later):
     # # imeshline = [meshTree.query(thisline.geometry.coords)[1] for iline,thisline in Line.iterrows()]
 
-    # Note: this shouldn't be necessary. it is only here because the iSegment field in the hexwatershed.json file i used to prototype this code doesn't match the conceptual flowline file (possibly due to my mistake, but I wasn't able to piece it together. we might also keep this if we want the option to build a gdf (called MeshLine below) that represents the Mesh cells that contain a flowline, and build a kdtree from that rather than the entire mesh (or an option to identify the flowline from the mesh independently of the iSegment field)
+    # Note: this function probably will not ever be necessary. it is only here because the iSegment field in the hexwatershed.json file i used to prototype this code doesn't match the conceptual flowline file (possibly due to my mistake, but I wasn't able to piece it together). we might also keep this if we want the option to build a gdf (called MeshLine in make_dam_dependency) that represents the Mesh cells that contain a flowline, and build a kdtree from that rather than the entire mesh (or an option to identify the flowline from the mesh independently of the iSegment field)
+
+
+def gdf_coordinate_list(gdf,flatten=False):
+    
+    '''
+    extract coordinate pairs from each feature in a gdf and concatenate them into one list, or list of lists. flatten it into one list if requested.
+    Inputs
+    gdf : GeoDataFrame
+        a geodataframe with features for which the coordinates will be converted to a list
+    flatten : boolean
+        if true, will return one flattened list of coordinate pairs
+
+    Author: Matt Cooper (matt.cooper@pnnl.gov), 2022
+    '''
+    from numpy import array
+    from shapely.geometry import Polygon
+
+    coordinatelist = []
+    for idx,feature in gdf.iterrows():
+        
+        if all(gdf.geom_type=='LineString'):
+            coords = array(feature.geometry.coords)
+        elif all(gdf.geom_type=='Point'):
+            # not sure if this will work
+            coords = array(feature.geometry.coords)
+        elif all(gdf.geom_type=='Polygon'):
+            coords = array(Polygon(feature['geometry']).exterior.coords)
+        
+        coordinatelist.append(coords)
+
+        # need a method to figure out if the feature needs to be converted to a polygon first:
+        # coords = np.array(Polygon(feature['geometry']).exterior.coords)
+
+    if flatten is True:
+        coordinatelist = [coords for features in coordinatelist for coords in features]
+
+    return coordinatelist

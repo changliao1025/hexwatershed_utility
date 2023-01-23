@@ -1,67 +1,5 @@
 
-
-import json
-import numpy as np
-
-# -----------------------------------------------------
-# -----------------------------------------------------
-def meshjson_dnID(MeshJSONfile):
-
-    """
-    find the ID->dnID connectivity from the hexwatershed.json file
-
-    Parameters
-    ----------
-    MeshJSONfile : str
-        Path to the hexwhatershed json file.
-
-    Returns
-    -------
-    ID : int
-        cell ID from 1->ncells
-    dnID : int
-        downstream cell ID for each ID
-    
-    Author: Matt Cooper (matt.cooper@pnnl.gov), Donghui Xu and Chang Liao, PNNL
-    """
-
-    with open(MeshJSONfile) as json_file:
-        Mesh = json.load(json_file)
-
-    # init lists
-    ncell = len(Mesh)
-    ID = np.arange(ncell) + 1 # start ID at 1 not 0
-    dnID=list()
-    cellID = list()
-    cellID_downslope=list()
-
-    for n in range(ncell):
-        pcell = Mesh[n]
-        cellID.append(int(pcell['lCellID']))
-        cellID_downslope.append(int(pcell['lCellID_downslope']))
-
-    #convert to numpy array
-    ncell = len(cellID)
-    cellID = np.array(cellID)
-    cellID_downslope=np.array(cellID_downslope)
-    
-    for n in range(ncell):
-        if cellID_downslope[n] == -1:
-            dnID.append(-9999)
-        else:
-            index = int(np.where(cellID == cellID_downslope[n])[0])
-            dnID.append(index + 1)
-        
-    dnID = np.array(dnID)
-    return ID,dnID
-
-# started to make one that works with the Mesh geodataframe, but it isnt' needed for now
-# def meshgdf_dnID(Mesh):
-    # for icell,thiscell in Mesh.iterrows():
-
-# -----------------------------------------------------
-# -----------------------------------------------------
-def findDownstreamCells(ID,dnID,ipoints,IDtype='mosart'):
+def find_downstream_cells(ID,dnID,ipoints,IDtype='mosart'):
     
     """
     find indices and IDs of all cells downstream of each point in a list of points
@@ -88,18 +26,23 @@ def findDownstreamCells(ID,dnID,ipoints,IDtype='mosart'):
     
     Author: Matt Cooper (matt.cooper@pnnl.gov)
     """
+    
+    # imports
+    import numpy as np
 
+    # function definitions
+    intvector = np.vectorize(np.int_)
+
+    # initialize
     ncells = len(ipoints)
+    ID_downstream = []
+    i_downstream = []
 
     # locate the outlet cell from the global dn_ID
     if IDtype == 'mosart':
-        ioutlet = int(np.where(dnID==-9999)[0])
+        ioutlet = intvector(np.where(dnID==-9999)[0])
     elif IDtype == 'hexwatershed':
-        ioutlet = int(np.where(dnID==-1)[0])
-
-    # init the outputs
-    ID_downstream = []
-    i_downstream = []
+        ioutlet = intvector(np.where(dnID==-1)[0])
 
     # loop over all points and find all downstream cells
     for n in range(ncells):
@@ -107,7 +50,7 @@ def findDownstreamCells(ID,dnID,ipoints,IDtype='mosart'):
         idn = ipoints[n]
         dnID_n = []
         dnidx_n = []
-        while idn != ioutlet:
+        while idn not in ioutlet:  # while idn != ioutlet: (if ioutlet is scalar)
             idn = int(np.where(ID==dnID[idn])[0])
             dnID_n.append(int(dnID[idn]))
             dnidx_n.append(idn)

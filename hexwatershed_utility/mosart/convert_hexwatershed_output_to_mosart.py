@@ -3,7 +3,7 @@ import os, sys
 from netCDF4 import Dataset
 import numpy as np
 from datetime import datetime
-import scipy
+
 from scipy.io import netcdf
 import getpass
 
@@ -305,7 +305,10 @@ def create_unstructure_domain_file_1d(aLon_region, aLat_region, \
             else:
                 #raise NameError('Added area computation')
                 #use different method to get area
-                data = np.array(aArea)
+                radius= 6378137.0                      
+                dummy_data = np.array(aArea )
+                data  = dummy_data / ( 4*np.pi*(radius**2) )
+
                 pass
         
         aValue[:] = data 
@@ -358,10 +361,11 @@ def convert_hexwatershed_json_to_mosart_netcdf(sFilename_json_in, \
     with open(sFilename_json_in) as json_file:
         data = json.load(json_file)      
         ncell = len(data)
-        lID =0 
+        lID = 1 
         for i in range(ncell):
             pcell = data[i]
             aID.append(lID)
+            lID = lID + 1
             dArea = float(pcell['Area'])
             aArea.append(dArea)
             aLongitude.append(float(pcell['dLongitude_center_degree']))
@@ -427,14 +431,15 @@ def convert_hexwatershed_json_to_mosart_netcdf(sFilename_json_in, \
             aDnID.append(-9999)
         else:
             dummy_index  = np.where(aCellID == lCellID_downslope)
-            index = np.reshape(dummy_index, 1)[0]
-            aDnID.append(index + 1)
+            #index = np.reshape(dummy_index, 1)[0]
+            dnID = aID[dummy_index[0]]
+            aDnID.append(dnID[0])
        
     aDnID = np.array(aDnID)
     aDomainfrac=np.array(aDomainfrac)
     aElevation=np.array(aElevation)
     aRlen=np.array(aFlowline_length)
-    aLon  =np.array(aLongitude)
+    aLon =np.array(aLongitude)
     aLat =np.array(aLatitude)
     aLongxy = aLon
     aLatixy = aLat

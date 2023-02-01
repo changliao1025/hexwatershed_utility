@@ -1,17 +1,14 @@
-import os, sys, stat
-from pathlib import Path
+import os
 import json
 from netCDF4 import Dataset
 from pyearth.system.define_global_variables import *    
 import matplotlib.pyplot as plt
-import matplotlib.path as mpath
-import matplotlib.ticker as mticker
+
 import matplotlib.patches as mpatches
 import cartopy.crs as ccrs
 import matplotlib.cm as cm
 import numpy as np
-from shapely.wkt import loads
-from osgeo import  osr, gdal, ogr
+
 #desired_proj = ccrs.PlateCarree()
 desired_proj = ccrs.Orthographic(central_longitude=-145, central_latitude=69, globe=None)
 desired_proj = ccrs.Orthographic(central_longitude=  0.50*(-149.5+(-146.5)), \
@@ -216,9 +213,6 @@ def map_mosart_output():
             
         #map_mosart_variable(sFilename_out,sTitle, sUnit, aData_year1, aExtent_in=aExtent_in)
                     
-
-        
-
     
 
     return

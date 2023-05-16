@@ -21,7 +21,7 @@ def create_unstructured_domain_file(aLon_region, aLat_region, \
     #                           Define dimensions
     #
     # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
-    ni, nv = aLonV_region.shape
+    nv, ni = aLonV_region.shape
     nj = 1
 
   
@@ -99,14 +99,16 @@ def create_unstructured_domain_file(aLon_region, aLat_region, \
                 cx = aLonV_region[:,2]
                 cy = aLatV_region[:,2]
 
-                data = 0.5*(ax*(by-cy) + bx*(cy-ay) + cx*(ay-by))
+                #data = 0.5*(ax*(by-cy) + bx*(cy-ay) + cx*(ay-by))
             elif aLonV_region.shape[1] == 4:
-                data = (aLonV_region[:,0] - aLonV_region[:,1]) * (aLatV_region[:,0] - aLatV_region[:,2])
+                #data = (aLonV_region[:,0] - aLonV_region[:,1]) * (aLatV_region[:,0] - aLatV_region[:,2])
+                
+                pass
             else:
                 #raise NameError('Added area computation')
                 #use different method to get area
                 radius= 6378137.0                      
-                dummy_data = np.array(aArea )
+                dummy_data = np.array(aArea ) #m^2
                 data  = dummy_data / ( 4*np.pi*(radius**2) )
 
                 pass

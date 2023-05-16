@@ -1,12 +1,9 @@
+import os
+from pathlib import Path
 import json
-
-
 import numpy as np
-
-from netCDF4 import Dataset
-
-
-from hexwatershed_utility.mosart.create_unstructured_domain_file import create_unstructured_domain_file
+import netCDF4 as nc
+from pye3sm.mesh.unstructured.e3sm_create_unstructured_domain_file_full import e3sm_create_unstructured_domain_file_full
 from hexwatershed_utility.mosart.get_geometry import get_geometry
 def convert_hexwatershed_json_to_mosart_netcdf(sFilename_json_in, \
     sFilename_mpas_in, \
@@ -42,6 +39,7 @@ def convert_hexwatershed_json_to_mosart_netcdf(sFilename_json_in, \
     aRlen=list()
     aRslp=list()
     aRwid=list()
+    aRwid0=list()
     aTslp=list()
     aTwid=list()
     aLatV_region=list()
@@ -63,25 +61,28 @@ def convert_hexwatershed_json_to_mosart_netcdf(sFilename_json_in, \
             aElevation.append(float(pcell['Elevation']))
             dDrainage = float(pcell['DrainageArea'])
             aDrainage.append(dDrainage)
-            aSlope.append(float(pcell['dSlope_between']))
+            #qa for slope
+            dSlope = float(pcell['dSlope_between'])
+            if dSlope < 0.0001:
+                dSlope = 0.0001
+            aSlope.append(dSlope)
             dFlowline_length = float(pcell['dLength_flowline'])
             aFlowline_length.append(dFlowline_length)
             aDomainfrac.append(1.0)
             aFdir.append(1)
 
-            dGxr = dArea / dFlowline_length
+            #dGxr = dArea / dFlowline_length
+            dGxr =  dFlowline_length / dArea
             aGxr.append(dGxr)
                
-            aNh.append(1.0)
-            aNr.append(1.0)
-            aNt.append(1.0)
-            
-            aTwid.append(1.0)
-
+            aNh.append(0.1)
+            aNr.append(0.05)
+            aNt.append(0.05)            
+            aTwid.append(10.0)
             
             dummy_vertex = pcell['vVertex']
-            aVertex_lon = np.full(8, -9999, float)
-            aVertex_lat = np.full(8, -9999, float)
+            aVertex_lon = np.full(9, -9999, float)
+            aVertex_lat = np.full(9, -9999, float)
             nVertex=len(dummy_vertex)
             for j in range(nVertex):
                 aVertex_lon[j] = dummy_vertex[j]['dLongitude_degree']
@@ -92,15 +93,14 @@ def convert_hexwatershed_json_to_mosart_netcdf(sFilename_json_in, \
             
         pass
     
-    aLongitude_in = np.array(aLongitude)
-    aLatitude_in = np.array(aLatitude)
+    aLongitude_in = np.array(aLongitude).reshape(ncell)
+    aLatitude_in = np.array(aLatitude).reshape(ncell)
     nCell = len(aCellID)
-    aCellID = np.array(aCellID)
-    aCellID_downslope=np.array(aCellID_downslope)
-    aArea=np.array(aArea)
+    aCellID = np.array(aCellID).reshape(ncell)
+    aCellID_downslope=np.array(aCellID_downslope).reshape(ncell)
+    aArea=np.array(aArea).reshape(ncell)
+    
     aRwid, aRdep, aFlood_2yr_out = get_geometry(aLongitude_in, aLatitude_in, aCellID, aCellID_downslope, aArea, pWidth_in = None, pDepth_in = None)
-    
-    
     
     #convert to numpy array
     
@@ -109,8 +109,10 @@ def convert_hexwatershed_json_to_mosart_netcdf(sFilename_json_in, \
     
     aID = np.array(aID)
 
-    aLonV_region= np.array(aLonV_region)
-    aLatV_region= np.array(aLatV_region)
+    aLonV_region= np.array(aLonV_region) #.T
+    aLatV_region= np.array(aLatV_region) #.T
+
+
 
     for i in range(nCell):
         lCellID = aCellID[i]
@@ -147,14 +149,14 @@ def convert_hexwatershed_json_to_mosart_netcdf(sFilename_json_in, \
     aTslp = aHslp
 
     #open mpas netcdf 
-    pDatasets_in = Dataset(sFilename_mosart_parameter_in)
+    pDatasets_in = nc.Dataset(sFilename_mosart_parameter_in)
     netcdf_format = pDatasets_in.file_format
     #output file
-    pDatasets_out = Dataset(sFilename_mosart_parameter_out, "w", format=netcdf_format)
+    pDatasets_out = nc.Dataset(sFilename_mosart_parameter_out, "w", format=netcdf_format)
     aVariable = ['area','areaTotal','areaTotal2','dnID', 'domainfrac',\
-        'fdir','frac','gxr','hslp','ID',\
+        'fdir','frac','gxr','hslp','CellID', 'ID',\
             'lat','latixy','lon', 'longxy','nh', 'nr','nt',
-            'rdep','rlen','rslp','rwid', 'tslp', 'twid']
+            'rdep','rlen','rslp','rwid','rwid0', 'tslp', 'twid']
 
     aUnit = ['','','','','','','','','','','','','','','','','','','','','','','','','','','','','','']
     aLongName = ['','','','','','','','','','','','','','','','','','','','','','','','','','','','','','']
@@ -173,6 +175,7 @@ def convert_hexwatershed_json_to_mosart_netcdf(sFilename_json_in, \
     aData_out.append(aFdir)
     aData_out.append(aGxr)
     aData_out.append(aHslp)
+    aData_out.append(aCellID) #global cell ID
     aData_out.append(aID)
     aData_out.append(aLat)
     aData_out.append(aLatixy)
@@ -185,6 +188,8 @@ def convert_hexwatershed_json_to_mosart_netcdf(sFilename_json_in, \
     aData_out.append(aRlen)
     aData_out.append(aRslp)
     aData_out.append(aRwid)
+    aRwid0=aRwid * 5.0
+    aData_out.append(aRwid0)
     aData_out.append(aTslp)
     aData_out.append(aTwid)
 
@@ -204,15 +209,44 @@ def convert_hexwatershed_json_to_mosart_netcdf(sFilename_json_in, \
         pVar.setncatts( { 'long name': aLongName[i] } )  
 
     
-    #create domain file
+    #create domain file        
+
+    aShape = aLon.shape
+    if len(aShape)==1:
+        nrow=aShape[0]
+        ncolumn = 1
+    else:
+        nrow=aShape[0]
+        ncolumn = aShape[1]
+
     
-    aLon_region  = aLon
-    aLat_region = aLat
-  
+    
+    aLon.shape=(nrow, 1)
+    aLat.shape=(nrow, 1)
+    
+    nrow, nvertex = aLonV_region.shape
+    aLonV_region.shape = (nrow, 1, nvertex)
+    aLatV_region.shape = (nrow, 1, nvertex)
 
-    create_unstructured_domain_file(aLon_region, aLat_region, \
-    aLonV_region, aLatV_region,  aArea,   sFilename_mosart_domain_out)  
+    
 
+    e3sm_create_unstructured_domain_file_full(aLon, aLat,  aLonV_region, aLatV_region,  
+                              sFilename_mosart_domain_out, aArea_in=aArea )
+    #two options: simple ; non-simple
+
+
+
+    #e3sm_create_unstructured_domain_file_simple(aLon, aLat,  aLonV_region, aLatV_region,  
+    #                          sFilename_mosart_domain_out, aArea_in=aArea )
+
+    sFolder = os.path.dirname(sFilename_mosart_domain_out)
+    sBasename = Path(sFilename_mosart_domain_out).stem
+    sFilname_new = sBasename +  '_simple.nc'
+    sFilename_mosart_domain_out= os.path.join(sFolder , sFilename_mosart_domain_out) 
+    
+
+
+    
     return
 
 

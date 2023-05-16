@@ -10,6 +10,18 @@ from hexwatershed_utility.mosart.find_contributing_cells import find_contributin
 def get_geometry(aLongitude_in, aLatitude_in, aCellID, aCellID_downslope, aArea, pWidth_in = None, pDepth_in = None):
     """
     This is the function to retrive the river width, depth and 
+
+    Args:
+        aLongitude_in (_type_): _description_
+        aLatitude_in (_type_): _description_
+        aCellID (_type_): _description_
+        aCellID_downslope (_type_): _description_
+        aArea (_type_): _description_
+        pWidth_in (_type_, optional): _description_. Defaults to None.
+        pDepth_in (_type_, optional): _description_. Defaults to None.
+
+    Returns:
+        _type_: _description_
     """
     #generate the mesh 
     nCell = len(aLongitude_in)
@@ -22,8 +34,6 @@ def get_geometry(aLongitude_in, aLatitude_in, aCellID, aCellID_downslope, aArea,
     aLongitude, aLatitude = np.meshgrid(aLongitude0, aLatitude0)
     nrow, ncolumn = aLongitude.shape
 
-    #aLongitude = np.transpose(aLongitude)
-    #aLatitude = np.transpose(aLatitude)
 
     if pWidth_in is None:
         pWidth = 7.2
@@ -88,19 +98,19 @@ def get_geometry(aLongitude_in, aLatitude_in, aCellID, aCellID_downslope, aArea,
     
     aCellIndex_all= list()
     aCellID_all= list()
-    #aCellID_contribution_all= list()
+    aCellID_contribution_all= list()
     aCellIndex_contribution_all= list()
 
     iFlag_search_contribution_cell=1
     if iFlag_search_contribution_cell ==1:
         print('Searching for contribuing area...\n')
         sys.stdout.flush()
-        for i in range(0, nCell,1):      
-            lCellID_nearest, lCellIndex_nearest, aCellID_contribution, aCellIndex_contribution = find_contributing_cells(aLongitude_in, aLatitude_in, aCellID, aCellID_downslope, \
-              aLongitude_in[i], aLatitude_in[i])   
+        for i in range(0, nCell,1):    
+            lCellID = aCellID[i]          
+            aCellID_contribution, aCellIndex_contribution = find_contributing_cells(aCellID, aCellID_downslope, lCellID)
 
-            aCellIndex_all.append(lCellIndex_nearest)
-            aCellID_all.append(lCellID_nearest)
+            aCellID_contribution_all.append(aCellID_contribution)
+            #aCellID_all.append(lCellID_nearest)
             aCellIndex_contribution_all.append(aCellIndex_contribution)
     
     #aCellIndex_all = ray.get(aCellIndex_all)
@@ -111,11 +121,17 @@ def get_geometry(aLongitude_in, aLatitude_in, aCellID, aCellID_downslope, aArea,
     sys.stdout.flush()
 
     #sun up runoff to get discrage
-    for i in range(0, nCell,1):      
+    for i in range(nCell):      
+
+        lCellID = aCellID[i]        
+        if lCellID ==152663:
+            print('debug')    
+        if lCellID ==150992:
+            print('debug') 
         dummy3 = aCellIndex_contribution_all[i]
         dummy4 = np.array(dummy3)
         dummy0 = aRunoff[:,dummy4] 
-        dummy1 = aArea[i]
+        dummy1 = aArea[dummy4]
         dummy2 = dummy0 * dummy1
         dummy4 = np.sum( dummy2, 1 )
         #unit conersion

@@ -26,10 +26,10 @@ lID_local = 0
 #===========================
 #setup workspace path
 #===========================
-sPath_parent = str(Path(__file__).parents[1]) # data is located two dir's up
+sPath_parent = str(Path(__file__).parents[2]) # data is located two dir's up
 sPath_data = realpath( sPath_parent +  '/data/' )
-sWorkspace_input =  str(Path(sPath_data)  /  'input')
-sWorkspace_output = sPath_parent +  '/data/southamerica/pyflowline'
+#sWorkspace_input =  str(Path(sPath_data)  /  'input')
+sWorkspace_output = sPath_parent +  '/data/asia/pyflowline'
 
 
 class TailRecurseException(Exception):
@@ -209,6 +209,7 @@ def split_filtered_hydroshed_flowline():
 
     sFilename_filtered_hydroshed = sPath_parent  + '/data/conus/hydroshed_conus.geojson'
     sFilename_filtered_hydroshed = '/compyfs/liao313/00raw/mesh/southamerica/southamerica.geojson'
+    sFilename_filtered_hydroshed = '/compyfs/liao313/00raw/mesh/asia/china.geojson'
     if os.path.isfile(sFilename_filtered_hydroshed):
         pass
     else:
@@ -224,7 +225,9 @@ def split_filtered_hydroshed_flowline():
     for i in range(nfeature_flowline):  
         #get the flowline attribute, we only accept a flowline if it flows into the ocean
         lRiverID = int(aTopology_id[i])   
-        if lRiverID == 60443230:
+        #40613666 yangzte river
+        #60443230 amazon
+        if lRiverID == 40613666: #
             print('l')
         else:
             continue

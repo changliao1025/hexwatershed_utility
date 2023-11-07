@@ -5,11 +5,6 @@ from datetime import datetime
 
 import numpy as np
 
-from netCDF4 import Dataset
-from pyearth.gis.gdal.read.gdal_read_envi_file import gdal_read_envi_file_multiple_band
-
-from pyflowline.algorithms.auxiliary.gdal_functions import calculate_distance_based_on_lon_lat
-
 
 
 def find_contributing_cells( aCellID, aCellID_downslope, lCellID):

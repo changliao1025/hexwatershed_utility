@@ -29,8 +29,9 @@ def get_geometry(aLongitude_in, aLatitude_in, aCellID, aCellID_downslope, aArea,
     if iFlag_debug==1:
         nCell=100
 
-    aLongitude0 = np.arange(-179.75,180,0.5)
-    aLatitude0 = np.arange(-59.75,90, 0.5)
+    dResolution_runoff = 0.5
+    aLongitude0 = np.arange(-179.75,180,dResolution_runoff)
+    aLatitude0 = np.arange(-59.75,90, dResolution_runoff)
     aLongitude, aLatitude = np.meshgrid(aLongitude0, aLatitude0)
     nrow, ncolumn = aLongitude.shape
 

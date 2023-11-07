@@ -1,6 +1,7 @@
 import numpy as np
 from osgeo import gdal, osr, ogr
-def convert_hexwatershed_output_to_raster(sMesh_type_in, sFilename_json_in ):
+def convert_hexwatershed_output_to_raster(sMesh_type_in, 
+sFilename_json_in, sFilename_spatial_reference_in ):
 
     #first we need to read the json file
 

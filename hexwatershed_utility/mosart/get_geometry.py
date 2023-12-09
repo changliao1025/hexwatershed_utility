@@ -1,12 +1,9 @@
 
 import  sys
-
-
 import numpy as np
-
-from netCDF4 import Dataset
-from pyearth.gis.gdal.read.gdal_read_envi_file import gdal_read_envi_file_multiple_band
+from pyearth.gis.gdal.read.raster.gdal_read_envi_file import gdal_read_envi_file_multiple_band
 from hexwatershed_utility.mosart.find_contributing_cells import find_contributing_cells
+
 def get_geometry(aLongitude_in, aLatitude_in, aCellID, aCellID_downslope, aArea, pWidth_in = None, pDepth_in = None):
     """
     This is the function to retrive the river width, depth and 
@@ -26,15 +23,12 @@ def get_geometry(aLongitude_in, aLatitude_in, aCellID, aCellID_downslope, aArea,
     #generate the mesh 
     nCell = len(aLongitude_in)
     iFlag_debug = 0
-    if iFlag_debug==1:
-        nCell=100
 
     dResolution_runoff = 0.5
     aLongitude0 = np.arange(-179.75,180,dResolution_runoff)
     aLatitude0 = np.arange(-59.75,90, dResolution_runoff)
     aLongitude, aLatitude = np.meshgrid(aLongitude0, aLatitude0)
     nrow, ncolumn = aLongitude.shape
-
 
     if pWidth_in is None:
         pWidth = 7.2
@@ -43,8 +37,7 @@ def get_geometry(aLongitude_in, aLatitude_in, aCellID, aCellID_downslope, aArea,
     if pDepth_in is None:
         pDepth = 0.27
     else:
-        pDepth = pDepth_in     
-    
+        pDepth = pDepth_in         
 
     #initialize runoff and discharge
     nyear = 2009-1978
@@ -92,8 +85,7 @@ def get_geometry(aLongitude_in, aLatitude_in, aCellID, aCellID_downslope, aArea,
             d = dummy[ i,:]
             c = d[aIndexNearest]
             c[np.where(c==-9999.0)]=0.0
-            aRunoff[i,:] = c
-        
+            aRunoff[i,:] = c        
        
     #find contributing cells
     
@@ -123,12 +115,7 @@ def get_geometry(aLongitude_in, aLatitude_in, aCellID, aCellID_downslope, aArea,
 
     #sun up runoff to get discrage
     for i in range(nCell):      
-
-        lCellID = aCellID[i]        
-        if lCellID ==152663:
-            print('debug')    
-        if lCellID ==150992:
-            print('debug') 
+        lCellID = aCellID[i]      
         dummy3 = aCellIndex_contribution_all[i]
         dummy4 = np.array(dummy3)
         dummy0 = aRunoff[:,dummy4] 
@@ -142,8 +129,7 @@ def get_geometry(aLongitude_in, aLatitude_in, aCellID, aCellID_downslope, aArea,
     for i in range(0,nyear,1):
         dummy_range = np.arange(i * 365, (i+1) * 365 , 1)
         tmp = aDischarge[dummy_range,: ]
-        AMF[i,:] = np.max(tmp, 0)
-   
+        AMF[i,:] = np.max(tmp, 0)   
 
     aFlood_2yr_out = np.percentile(AMF, 50, 0)
 

@@ -10,7 +10,8 @@ from pyearth.gis.geometry.calculate_polygon_area import calculate_polygon_area
 def convert_hexwatershed_json_to_mosart_netcdf(sFilename_json_in,
                                                sFilename_mosart_parameter_in,
                                                sFilename_mosart_parameter_out,
-                                               sFilename_mosart_domain_out):
+                                               sFilename_mosart_domain_out,
+                                               pWidth_in=None, pDepth_in=None):
     # open json and read data
     aID = list()
     aDnID = list()
@@ -53,7 +54,7 @@ def convert_hexwatershed_json_to_mosart_netcdf(sFilename_json_in,
             pcell = data[i]
             aID.append(lID)
             lID = lID + 1
-            
+
             #aArea.append(dArea)
             aLongitude.append(float(pcell['dLongitude_center_degree']))
             aLatitude.append(float(pcell['dLatitude_center_degree']))
@@ -64,8 +65,8 @@ def convert_hexwatershed_json_to_mosart_netcdf(sFilename_json_in,
             aDrainage.append(dDrainage)
             # qa for slope
             dSlope = float(pcell['dSlope_between'])
-            if dSlope < 0.0001:
-                dSlope = 0.0001
+            if dSlope < 0.0005:
+                dSlope = 0.0005
                 pass
 
             aSlope.append(dSlope)
@@ -77,7 +78,7 @@ def convert_hexwatershed_json_to_mosart_netcdf(sFilename_json_in,
             aNh.append(0.1)
             aNr.append(0.05)
             aNt.append(0.05)
-            aTwid.append(10.0)
+            aTwid.append(10.0) #this parameter should be updated
 
             dummy_vertex = pcell['vVertex']
             aVertex_lon = np.full(9, -9999, float)
@@ -109,7 +110,7 @@ def convert_hexwatershed_json_to_mosart_netcdf(sFilename_json_in,
     aArea = np.array(aArea).reshape(ncell)
 
     aRwid, aRdep, aFlood_2yr_out = get_geometry(
-        aLongitude_in, aLatitude_in, aCellID, aCellID_downslope, aArea, pWidth_in=None, pDepth_in=None)
+        aLongitude_in, aLatitude_in, aCellID, aCellID_downslope, aArea, pWidth_in=pWidth_in, pDepth_in=pDepth_in)
 
     # convert to numpy array
 
@@ -150,7 +151,9 @@ def convert_hexwatershed_json_to_mosart_netcdf(sFilename_json_in,
     aNt = np.array(aNt)
     aRdep = np.array(aRdep)
     aRwid = np.array(aRwid)
-    aTwid = np.array(aTwid)
+    aTwid = np.array(aTwid) * 5
+    #fix tributary width
+
     aRslp = aHslp
     aTslp = aHslp
 
@@ -275,8 +278,8 @@ if __name__ == '__main__':
             sFilename_mosart_parameter_out = 'mosart_columbia_parameter.nc'
             sFilename_mosart_domain_out = 'mosart_columbia_domain.nc'
 
-    convert_hexwatershed_json_to_mosart_netcdf(sFilename_json_in, \
+    convert_hexwatershed_json_to_mosart_netcdf(sFilename_json_in,
                                                # sFilename_mpas_in, \
                                                sFilename_mosart_parameter_in,
-                                               sFilename_mosart_parameter_out, \
+                                               sFilename_mosart_parameter_out,
                                                sFilename_mosart_domain_out)

@@ -1,0 +1,15 @@
+{
+"type": "FeatureCollection",
+"name": "point",
+"features": [
+{ "type": "Feature", "properties": { "id": 0, "lon": -135.895517893798, "lat": 58.602314270718502 }, "geometry": { "type": "Point", "coordinates": [ -135.895517893798001, 58.602314270718502, 0.0 ] } },
+{ "type": "Feature", "properties": { "id": 1, "lon": -135.89618409984101, "lat": 58.602089711571402 }, "geometry": { "type": "Point", "coordinates": [ -135.896184099841008, 58.602089711571402, 0.0 ] } },
+{ "type": "Feature", "properties": { "id": 2, "lon": -135.900708782489, "lat": 58.575834021217197 }, "geometry": { "type": "Point", "coordinates": [ -135.900708782489005, 58.575834021217197, 0.0 ] } },
+{ "type": "Feature", "properties": { "id": 3, "lon": -135.900708782489, "lat": 58.575834021217197 }, "geometry": { "type": "Point", "coordinates": [ -135.900708782489005, 58.575834021217197, 0.0 ] } },
+{ "type": "Feature", "properties": { "id": 4, "lon": -135.90016887803401, "lat": 58.575533289801598 }, "geometry": { "type": "Point", "coordinates": [ -135.900168878034009, 58.575533289801598, 0.0 ] } },
+{ "type": "Feature", "properties": { "id": 5, "lon": -135.87107461997499, "lat": 58.573217174726899 }, "geometry": { "type": "Point", "coordinates": [ -135.871074619974991, 58.573217174726899, 0.0 ] } },
+{ "type": "Feature", "properties": { "id": 6, "lon": -135.85352528747799, "lat": 58.587108875381901 }, "geometry": { "type": "Point", "coordinates": [ -135.853525287477993, 58.587108875381901, 0.0 ] } },
+{ "type": "Feature", "properties": { "id": 7, "lon": -135.874560313269, "lat": 58.600938279423403 }, "geometry": { "type": "Point", "coordinates": [ -135.874560313269001, 58.600938279423403, 0.0 ] } },
+{ "type": "Feature", "properties": { "id": 8, "lon": -135.89618409984101, "lat": 58.602089711571402 }, "geometry": { "type": "Point", "coordinates": [ -135.896184099841008, 58.602089711571402, 0.0 ] } }
+]
+}

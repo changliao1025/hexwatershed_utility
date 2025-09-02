@@ -1,0 +1,16 @@
+{
+"type": "FeatureCollection",
+"name": "point",
+"features": [
+{ "type": "Feature", "properties": { "id": 0, "lon": -67.4930026247538, "lat": 66.629053976601 }, "geometry": { "type": "Point", "coordinates": [ -67.4930026247538, 66.629053976601, 0.0 ] } },
+{ "type": "Feature", "properties": { "id": 1, "lon": -67.537548452770594, "lat": 66.643186343391605 }, "geometry": { "type": "Point", "coordinates": [ -67.537548452770594, 66.643186343391605, 0.0 ] } },
+{ "type": "Feature", "properties": { "id": 2, "lon": -67.540498783039695, "lat": 66.643306567474994 }, "geometry": { "type": "Point", "coordinates": [ -67.540498783039695, 66.643306567474994, 0.0 ] } },
+{ "type": "Feature", "properties": { "id": 3, "lon": -67.554107000934906, "lat": 66.637070742622996 }, "geometry": { "type": "Point", "coordinates": [ -67.554107000934906, 66.637070742622996, 0.0 ] } },
+{ "type": "Feature", "properties": { "id": 4, "lon": -67.549273243277696, "lat": 66.626005223930605 }, "geometry": { "type": "Point", "coordinates": [ -67.549273243277696, 66.626005223930605, 0.0 ] } },
+{ "type": "Feature", "properties": { "id": 5, "lon": -67.506773095167404, "lat": 66.614954115026805 }, "geometry": { "type": "Point", "coordinates": [ -67.506773095167404, 66.614954115026805, 0.0 ] } },
+{ "type": "Feature", "properties": { "id": 6, "lon": -67.496098706938994, "lat": 66.614990986221798 }, "geometry": { "type": "Point", "coordinates": [ -67.496098706938994, 66.614990986221798, 0.0 ] } },
+{ "type": "Feature", "properties": { "id": 7, "lon": -67.496098706938994, "lat": 66.614990986221798 }, "geometry": { "type": "Point", "coordinates": [ -67.496098706938994, 66.614990986221798, 0.0 ] } },
+{ "type": "Feature", "properties": { "id": 8, "lon": -67.4974100681994, "lat": 66.614649666845196 }, "geometry": { "type": "Point", "coordinates": [ -67.4974100681994, 66.614649666845196, 0.0 ] } },
+{ "type": "Feature", "properties": { "id": 9, "lon": -67.4930026247538, "lat": 66.629053976601 }, "geometry": { "type": "Point", "coordinates": [ -67.4930026247538, 66.629053976601, 0.0 ] } }
+]
+}

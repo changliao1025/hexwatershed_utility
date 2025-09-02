@@ -135,3 +135,12 @@ Desktop.ini
 Thumbs.db
 .Spotlight-*
 .Trashes
+
+*.geojson
+*.tif
+*.nc
+#shapefile
+*.shx
+*.dbf
+*.shp
+retired

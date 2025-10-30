@@ -6,7 +6,7 @@ from tinyr import RTree
 from pyearth.toolbox.geometry.create_gcs_buffer_zone import create_polyline_buffer_zone
 from pyflowline.formats.convert_coordinates import convert_gcs_coordinates_to_flowline
 from pyflowline.formats.export_flowline import export_flowline_to_geojson
-from pyflowline.algorithms.cython.kernel import calculate_distance_based_on_longitude_latitude, calculate_distance_based_on_longitude_latitude_numpy
+from pyflowline.algorithms.cython.kernel import calculate_distance_based_on_longitude_latitude
 from pyflowline.algorithms.index.define_stream_order import define_stream_order, update_head_water_stream_order
 from pyflowline.algorithms.merge.merge_flowline import merge_flowline
 from pyflowline.algorithms.index.define_stream_segment_index import define_stream_segment_index
@@ -14,7 +14,7 @@ from pyflowline.algorithms.split.find_flowline_confluence import find_flowline_c
 from pyflowline.algorithms.index.define_stream_topology import define_stream_topology
 from pyflowline.classes.confluence import pyconfluence
 from pyflowline.algorithms.split.find_flowline_vertex import find_flowline_vertex
-from pyflowline.configuration.config_manager import create_template_configuration_file
+from pyflowline.configuration.config_manager import create_pyflowline_template_configuration_file
 from pyflowline.configuration.change_json_key_value import change_json_key_value
 
 def convert_geometry_flowline(pGeometry_in, lFlowlineIndex, lID, lOutletID, lStream_order):
@@ -105,7 +105,7 @@ def basin_build_confluence( aFlowline_basin_in, aVertex_confluence_in):
         aConfluence_basin.append(pConfluence)
     return aConfluence_basin
 
-def simplify_hydrosheds_river_network(sFilename_flowline_hydroshed_in,
+def simplify_hydrorivers_networks(sFilename_flowline_hydroshed_in,
                        sFilename_flowline_hydroshed_out,
                        dDistance_tolerance_in,
                         dDrainage_area_threshold_in,
@@ -275,6 +275,7 @@ def simplify_hydrosheds_river_network(sFilename_flowline_hydroshed_in,
         if aFlowline_hydroshed_outlet[i].iFlag_keep == 1:
             aFlowline_hydroshed_outlet_simplified.append(aFlowline_hydroshed_outlet[i])
 
+    #save the flowlines whose outlet meet the requirement (distance and drainage area)
     print('Number of valid outlet flowlines in the hydroshed: ', len(aFlowline_hydroshed_outlet_simplified))
     sFilename_flowline_hydroshed_tmp = sFilename_flowline_hydroshed_out.replace('.geojson', '_outlet.geojson')
     export_flowline_to_geojson(aFlowline_hydroshed_outlet_simplified, sFilename_flowline_hydroshed_tmp)
@@ -300,7 +301,7 @@ def simplify_hydrosheds_river_network(sFilename_flowline_hydroshed_in,
             aFlowline_all.append(pFlowline_current)
             pass
 
-    #save the flowlines
+    #save all the flowlines that are not simplified
     sFilename_flowline_hydroshed_tmp = sFilename_flowline_hydroshed_out.replace('.geojson', '_all.geojson')
     aAttribute_field = ['lineid', 'downstream_id', 'drainage_area']
     aAttribute_dtype= ['int', 'int', 'float']
@@ -439,16 +440,12 @@ def simplify_hydrosheds_river_network(sFilename_flowline_hydroshed_in,
                     if iFlag_keep == 1:
                         aFlowline_rtree.append(pFlowline_a)
                         index_reach.insert(iStream_segment_a, pBound)
-                        if iStream_segment_a ==624:
-                            print('debug')
                         tag_upstream(iStream_segment_a, dDrainage_area_threshold)
                     else:
                         pass
                 else: #no intersecting flowlines
                     aFlowline_rtree.append(pFlowline_a)
                     index_reach.insert(iStream_segment_a, pBound)
-                    if iStream_segment_a ==624:
-                        print('debug')
                     tag_upstream(iStream_segment_a, dDrainage_area_threshold)
                     pass
             else:
@@ -590,7 +587,7 @@ def simplify_hydrosheds_river_network(sFilename_flowline_hydroshed_in,
     sWorkspace_output = os.path.dirname(sFilename_flowline_hydroshed_out)
     if iFlag_pyflowline_configuration_in ==1:
         sFilename_configuration_json = os.path.join(sWorkspace_output, 'pyflowline_configuration.json')
-        create_template_configuration_file(sFilename_configuration_json,
+        create_pyflowline_template_configuration_file(sFilename_configuration_json,
             sWorkspace_output = sWorkspace_output,
             iFlag_standalone_in=1,
             nOutlet = nOutlet_largest,
@@ -601,7 +598,8 @@ def simplify_hydrosheds_river_network(sFilename_flowline_hydroshed_in,
     aFlowline_rtree_all = list()
     aFlowline_rtree = list()
     for i in range(0, nFlowline_outlet, 1):
-        sFilename_flowline_hydroshed_outlet = sFilename_flowline_hydroshed_out.replace('.geojson', f'_{i+1:04d}_outlet_simplified.geojson')
+        sBasin = "{:04d}".format(i+1)
+        sFilename_flowline_hydroshed_simplified = sFilename_flowline_hydroshed_out.replace('.geojson', '_'+sBasin + '.geojson')
         aFlowline_rtree.clear()
         pFlowline_current = aFlowline_hydroshed_outlet_simplified[i]
         dLongitude_outlet = pFlowline_current.pVertex_end.dLongitude_degree
@@ -655,7 +653,7 @@ def simplify_hydrosheds_river_network(sFilename_flowline_hydroshed_in,
             aStream_segment = np.array(aStream_segment)
             aStream_order = np.array(aStream_order)
             export_flowline_to_geojson(aFlowline_rtree,
-                                       sFilename_flowline_hydroshed_outlet,
+                                       sFilename_flowline_hydroshed_simplified,
                     aAttribute_data=[aStream_segment, aStream_order],
                     aAttribute_field=['stream_segment','stream_order'],
                     aAttribute_dtype=['int','int'])
@@ -664,7 +662,7 @@ def simplify_hydrosheds_river_network(sFilename_flowline_hydroshed_in,
                     change_json_key_value(sFilename_configuration_basin_json, 'dAccumulation_threshold', dDrainage_area_threshold, iFlag_basin_in=1, iBasin_index_in=i)
                     change_json_key_value(sFilename_configuration_basin_json, 'dLatitude_outlet_degree', dLatitude_outlet, iFlag_basin_in=1, iBasin_index_in=i)
                     change_json_key_value(sFilename_configuration_basin_json, 'dLongitude_outlet_degree', dLongitude_outlet, iFlag_basin_in=1, iBasin_index_in=i)
-                    change_json_key_value(sFilename_configuration_basin_json, 'sFilename_flowline_filter', sFilename_flowline_hydroshed_outlet, iFlag_basin_in=1, iBasin_index_in=i)
+                    change_json_key_value(sFilename_configuration_basin_json, 'sFilename_flowline_filter', sFilename_flowline_hydroshed_simplified, iFlag_basin_in=1, iBasin_index_in=i)
             else:
                 print('This is an endorheic basin, we do not need to save the basin configuration file for it.')
             pass

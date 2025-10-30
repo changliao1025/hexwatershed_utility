@@ -70,8 +70,3 @@ def convert_pyflowline_mesh_to_elm_domain_file(sFilename_mesh_info_in, sFilename
 
     e3sm_convert_unstructured_domain_file_to_scripgrid_file(sFilename_domain_out, sFilename_domain_out.replace('.nc', '.scripgrid.nc'))
 
-if __name__ == '__main__':
-    sFilename_mesh = '' #geojson format
-    sFilename_mesh_info = '/compyfs/liao313/04model/pyflowline/conus/pyflowline20250501004/mpas_mesh_info.json'  #json format
-    sFilename_domain_out = '/compyfs/liao313/04model/pyflowline/conus/pyflowline20250501004/elm_domain.nc' #geojson format
-    convert_pyflowline_mesh_to_elm_domain_file(sFilename_mesh_info, sFilename_domain_out)

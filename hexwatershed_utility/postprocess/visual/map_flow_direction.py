@@ -17,4 +17,5 @@ else:
         #linux
         pass
 
-map_vector_polyline_file(1, sFilename_polyline_in, sFilename_output_in='mpas_flow_direction_map.png')
+map_vector_polyline_file(sFilename_polyline_in,  iFlag_global_in=1,
+                         sFilename_output_in='mpas_flow_direction_map.png')

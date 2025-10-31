@@ -1,6 +1,7 @@
 
 import os, sys, platform
 from pyearth.visual.animate.animate_polyline_file_on_sphere import animate_polyline_file_on_sphere
+from pyearth.visual.map.vector.map_vector_polyline_file import map_vector_polyline_file
 sPlatform_os = platform.system()
 
 if sPlatform_os == 'Windows':
@@ -12,11 +13,8 @@ else:
     if sPlatform_os == 'Darwin':
         sFilename_source_mesh = '/Users/liao313/scratch/04model/pyhexwatershed/global/pyflowline20250927006//mpas.geojson' #use the L10-100 test mesh
         sFilename_polyline_in = '/Users/liao313/scratch/04model/pyhexwatershed/global/pyhexwatershed20250928001/hexwatershed/mpas_flow_direction.geojson'
-        sFilename_animation_out = '/Users/liao313/scratch/04model/pyhexwatershed/global/pyhexwatershed20250928001/hexwatershed/animation_flow_direction.mp4'
     else:
         #linux
         pass
 
-animate_polyline_file_on_sphere(sFilename_polyline_in,
-                                sFilename_animation_out,
-                                sLinewidth_attribute_in='drainage_area')
+map_vector_polyline_file(1, sFilename_polyline_in, sFilename_output_in='mpas_flow_direction_map.png')

@@ -3,7 +3,6 @@ import glob
 from osgeo import gdal, ogr
 gdal.UseExceptions()
 
-from pyearth.system.define_global_variables import *
 from pyearth.gis.gdal.read.vector.gdal_get_vector_extent import gdal_get_vector_extent
 from pyearth.gis.location.get_hydrosheds_continent_from_extent import get_hydrosheds_continent_from_extent
 

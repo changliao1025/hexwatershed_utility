@@ -328,6 +328,11 @@ def visualize_mpas_mesh(sFilename_mpas_mesh_in: str,
                          iAnimation_frames: Optional[int] = 36,
                          dAnimation_speed: Optional[float] = 1.0,
                          sAnimation_format: Optional[str] = 'mp4',
+                         iFlag_wireframe_only: Optional[bool] = True,
+                          dEdge_width: float = 1.0,
+                          sEdge_color: str = 'black',
+                         iFlag_cull_backfaces: Optional[bool] = True,
+                         sCulling_mode: Optional[str] = 'auto',
                          iFlag_verbose_in: Optional[bool] = False) -> bool:
 
     """
@@ -349,6 +354,13 @@ def visualize_mpas_mesh(sFilename_mpas_mesh_in: str,
         sCoastline_color: Color for coastlines. Default is 'black'.
             Examples: 'white', 'red', 'blue', 'gray', or RGB tuples like (1.0, 0.0, 0.0).
         dCoastline_width: Line width for coastlines. Default is 1.0.
+        iFlag_cull_backfaces: Hide back faces of the sphere. Default is True.
+            When True, only faces facing the camera are rendered, preventing see-through effect.
+        sCulling_mode: Culling strategy ('auto', 'back', 'front', 'none'). Default is 'auto'.
+            'auto' selects the best culling mode based on rendering style.
+            'back' culls back-facing polygons (traditional for solid surfaces).
+            'front' culls front-facing polygons (good for wireframes).
+            'none' disables culling (shows all faces).
         iFlag_verbose_in: If True, print detailed progress messages. Default is False.
 
     Returns:
@@ -367,10 +379,17 @@ def visualize_mpas_mesh(sFilename_mpas_mesh_in: str,
         logger.error(f'Could not open MPAS mesh file {sFilename_mpas_mesh_in}: {e}')
         return False
     try:
-        aVertex_longititude = pDataset.variables['lonVertex'][:]
-        aVertex_latitude = pDataset.variables['latVertex'][:]
+        #read mesh lon and lat, convert to degrees
+        aVertex_longititude = pDataset.variables['lonVertex'][:] * (180.0 / np.pi)
+        #fix range of longitudes if necessary from [0, 360] to [-180, 180]
+        aVertex_longititude = np.where(aVertex_longititude > 180, aVertex_longititude - 360, aVertex_longititude)
+        aVertex_latitude = pDataset.variables['latVertex'][:] * (180.0 / np.pi)
         aConnectivity = pDataset.variables['verticesOnCell'][:]
         aCellID = pDataset.variables['indexToCellID'][:]
+
+
+
+
     except Exception as e:
         logger.error(f'Error reading mesh variables from {sFilename_mpas_mesh_in}: {e}')
         pDataset.close()
@@ -409,16 +428,29 @@ def visualize_mpas_mesh(sFilename_mpas_mesh_in: str,
             logger.info(f'  - Zoom factor: {config.zoom_factor}')
 
         # Validate connectivity array structure
-        if  aConnectivity.ndim != 2:
-            logger.error(f'Connectivity array must be 2D, got { aConnectivity.ndim}D')
+        if aConnectivity.ndim != 2:
+            logger.error(f'Connectivity array must be 2D, got {aConnectivity.ndim}D')
             return False
 
+        if config.verbose:
+            logger.info(f'Processing connectivity array of shape: {aConnectivity.shape}')
+            logger.info(f'Number of vertices: {len(aVertex_longititude)}')
+
         # Convert 1-based connectivity indices to 0-based (MPAS uses 1-based indexing)
-        aConnectivity_0based = np.where(aConnectivity > 0, aConnectivity - 1, aConnectivity)
+        # Invalid vertices are marked with fill_value (usually 0)
+        fill_value = 0
+        aConnectivity_0based = np.where(aConnectivity > fill_value, aConnectivity - 1, -1)
+
+        # Count valid vertices per cell for diagnostics
+        valid_vertices_per_cell = np.sum(aConnectivity_0based >= 0, axis=1)
+        if config.verbose:
+            logger.info(f'Valid vertices per cell - min: {np.min(valid_vertices_per_cell)}, '
+                       f'max: {np.max(valid_vertices_per_cell)}, '
+                       f'mean: {np.mean(valid_vertices_per_cell):.1f}')
 
         # Create masked connectivity array (mask invalid indices)
         connectivity_masked = np.ma.masked_where(
-            aConnectivity_0based == -1,
+            aConnectivity_0based < 0,
             aConnectivity_0based
         )
 
@@ -430,6 +462,17 @@ def visualize_mpas_mesh(sFilename_mpas_mesh_in: str,
                 logger.error(f'Connectivity contains invalid vertex index: '
                            f'max={np.max(valid_connectivity)}, vertices={len(aVertex_longititude)}')
                 return False
+
+        # Check for cells with too few vertices
+        cells_with_few_vertices = np.sum(valid_vertices_per_cell < 3)
+        if cells_with_few_vertices > 0:
+            logger.warning(f'Found {cells_with_few_vertices} cells with fewer than 3 vertices')
+            if config.verbose:
+                # Log some examples
+                bad_cells = np.where(valid_vertices_per_cell < 3)[0]
+                for i in range(min(5, len(bad_cells))):
+                    cell_idx = bad_cells[i]
+                    logger.warning(f'  Cell {cell_idx}: {valid_vertices_per_cell[cell_idx]} vertices')
 
         # Transform to GeoVista unstructured mesh
         mesh = gv.Transform.from_unstructured(
@@ -449,37 +492,135 @@ def visualize_mpas_mesh(sFilename_mpas_mesh_in: str,
         name = 'Mesh Cell ID'
         mesh.cell_data[name] =  aCellID
 
-        if config.verbose:
-            logger.info(f'Created GeoVista mesh with {mesh.n_cells} cells and {mesh.n_points} points')
-
         # Setup plotter
         pPlotter = _setup_geovista_plotter(iFlag_off_screen=(sFilename_out is not None), iFlag_verbose_in=config.verbose)
         if pPlotter is None:
             return False
 
-        # Configure scalar bar (colorbar) appearance
-        sargs = {
-            "title": name,
-            "shadow": True,
-            "title_font_size": 10,
-            "label_font_size": 10,
-            "fmt": "%.0f",  # Integer formatting for cell IDs
-            "n_labels": 5,
-        }
+        if config.verbose:
+            logger.info(f'Created GeoVista mesh with {mesh.n_cells} cells and {mesh.n_points} points')
 
-        # Add mesh to plotter
-        sScalars = name
-        sUnit = ''  # No specific unit for cell IDs
+        if iFlag_wireframe_only:
+            # Wireframe mode: show only edges without filling (no colorbar needed)
+            if config.verbose:
+                logger.info('Rendering mesh in wireframe mode (edges only)')
+                if iFlag_cull_backfaces:
+                    logger.info(f'Face culling enabled with mode: {sCulling_mode}')
 
+            # Determine culling mode
+            if not iFlag_cull_backfaces:
+                culling_mode = None
+            elif sCulling_mode == 'auto':
+                # For wireframe mode, front culling often works better
+                culling_mode = 'front'
+            elif sCulling_mode == 'none':
+                culling_mode = None
+            else:
+                culling_mode = sCulling_mode
 
-        if animation_config is not None:
-            return _handle_animation_visualization(
-                mesh, sScalars, aCellID, sUnit, config, animation_config, sFilename_out
-            )
+            # For wireframe with culling, we need a different approach
+            # The issue is that transparent faces with culling can hide everything if normals are wrong
+            if culling_mode is not None:
+                try:
+                    # Compute normals and ensure they point outward for sphere meshes
+                    mesh = mesh.compute_normals(inplace=True, consistent=True, auto_orient_normals=True)
+                    if config.verbose:
+                        logger.info('Computed consistent face normals for proper culling')
+
+                    # For wireframe mode, we'll use a hybrid approach:
+                    # Show edges with very low opacity faces so culling works but faces are barely visible
+                    pPlotter.add_mesh(
+                        mesh,
+                        show_edges=True,              # Show mesh edges
+                        edge_color=sEdge_color,       # Color for mesh edges
+                        line_width=dEdge_width,       # Width of edge lines
+                        opacity=0.05,                 # Very low opacity so faces are barely visible but culling works
+                        color='lightgray',            # Light color for barely visible faces
+                        show_scalar_bar=False,        # No colorbar for wireframe-like mode
+                        culling=culling_mode          # This works with low-opacity faces
+                    )
+
+                except Exception as e:
+                    logger.warning(f'Could not compute face normals: {e}. Falling back to no culling.')
+                    # Fall back to pure wireframe without culling
+                    pPlotter.add_mesh(
+                        mesh,
+                        style='wireframe',
+                        line_width=dEdge_width,
+                        color=sEdge_color,
+                        show_edges=True,
+                        show_scalar_bar=False
+                    )
+            else:
+                # No culling requested - use pure wireframe
+                if config.verbose:
+                    logger.info('Using pure wireframe mode (no culling)')
+                pPlotter.add_mesh(
+                    mesh,
+                    style='wireframe',
+                    line_width=dEdge_width,
+                    color=sEdge_color,
+                    show_edges=True,
+                    show_scalar_bar=False
+                )
+
+            if config.verbose and culling_mode:
+                logger.info(f'Using {culling_mode} culling for wireframe rendering with low-opacity faces')
+
         else:
-            return _handle_single_frame_visualization(
-                mesh, sScalars, aCellID, sUnit, config, sFilename_out
+            # Standard mode: show filled cells with scalars and colorbar
+            if config.verbose and iFlag_cull_backfaces:
+                logger.info(f'Face culling enabled with mode: {sCulling_mode}')
+
+            sargs = {
+                "title": name,
+                "shadow": True,
+                "title_font_size": 10,
+                "label_font_size": 10,
+                "fmt": "%.0f",  # Integer formatting for cell IDs
+                "n_labels": 5,
+            }
+
+            # Determine culling mode
+            if not iFlag_cull_backfaces:
+                culling_mode = None
+            elif sCulling_mode == 'auto':
+                # For solid mode, back culling typically works best
+                culling_mode = 'back'
+            elif sCulling_mode == 'none':
+                culling_mode = None
+            else:
+                culling_mode = sCulling_mode
+
+            # Ensure proper face normals before culling
+            if culling_mode is not None:
+                try:
+                    # Compute normals using PyVista's method
+                    mesh = mesh.compute_normals(inplace=True)
+                    if config.verbose:
+                        logger.info('Computed face normals for proper culling')
+                except Exception as e:
+                    logger.warning(f'Could not compute face normals: {e}. Culling may not work properly.')
+                    culling_mode = None
+
+            if config.verbose and culling_mode:
+                logger.info(f'Using {culling_mode} culling for solid rendering')
+
+            pPlotter.add_mesh(
+                mesh,
+                scalars=name,
+                scalar_bar_args=sargs,
+                culling=culling_mode
             )
+
+        # Configure camera
+        _configure_camera(pPlotter, config)
+
+        # Add geographic context
+        _add_geographic_context(pPlotter, config)
+
+        # Output or display
+        return _handle_visualization_output(pPlotter, sFilename_out, config.verbose)
 
     except ImportError as e:
         logger.error('GeoVista library not available. Install with: pip install geovista')
@@ -571,9 +712,24 @@ def _handle_single_frame_visualization(pMesh, sScalars: str, aValid_cell_indices
             "n_labels": 5,
         }
 
-        # Add mesh to plotter
+        # Add mesh to plotter - edges only with uniform color
         pMesh_valid = pMesh.extract_cells(aValid_cell_indices)
-        pPlotter.add_mesh(pMesh_valid, scalars=sScalars, scalar_bar_args=dSargs, cmap=pConfig.colormap)
+
+        # Ensure proper face normals for consistent rendering
+        try:
+            pMesh_valid = pMesh_valid.compute_normals(inplace=True)
+        except Exception as e:
+            logger.warning(f'Could not compute face normals: {e}')
+
+        pPlotter.add_mesh(
+            pMesh_valid,
+            show_edges=True,          # Show mesh edges
+            edge_color='black',         # Color for mesh edges
+            line_width=1.0,           # Width of edge lines
+            opacity=0.0,              # Make faces completely transparent
+            show_scalar_bar=False,    # Hide colorbar
+            culling='front'           # Use front culling for wireframe-like transparent faces
+        )
 
         # Configure camera and add geographic context
         _configure_camera(pPlotter, pConfig)
@@ -625,9 +781,24 @@ def _handle_animation_visualization(pMesh, sScalars: str, aValid_cell_indices: n
             "n_labels": 5,
         }
 
-        # Add mesh to plotter
+        # Add mesh to plotter - edges only with uniform color
         pMesh_valid = pMesh.extract_cells(aValid_cell_indices)
-        pPlotter.add_mesh(pMesh_valid, scalars=sScalars, scalar_bar_args=dSargs, cmap=pConfig.colormap)
+
+        # Ensure proper face normals for consistent rendering
+        try:
+            pMesh_valid = pMesh_valid.compute_normals(inplace=True)
+        except Exception as e:
+            logger.warning(f'Could not compute face normals: {e}')
+
+        pPlotter.add_mesh(
+            pMesh_valid,
+            show_edges=True,          # Show mesh edges
+            edge_color='red',         # Color for mesh edges
+            line_width=2.0,           # Width of edge lines
+            opacity=0.0,              # Make faces completely transparent
+            show_scalar_bar=False,    # Hide colorbar
+            culling='front'           # Use front culling for wireframe-like transparent faces
+        )
 
         # Configure initial camera position
         _configure_camera(pPlotter, pConfig)

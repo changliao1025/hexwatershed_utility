@@ -136,7 +136,6 @@ def simplify_hydrorivers_networks(sFilename_flowline_hydroshed_in,
     pSpatial_reference_gcs.ImportFromEPSG(4326)
     pSpatial_reference_gcs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
 
-
     if os.path.exists(sFilename_flowline_hydroshed_out):
         os.remove(sFilename_flowline_hydroshed_out)
 
@@ -430,7 +429,7 @@ def simplify_hydrorivers_networks(sFilename_flowline_hydroshed_in,
                             #this is the flowline that we are looking for
                             continue
                         else:
-                            dDistance = pFlowline_a.calculate_distance_to_flowline(pFlowline_b )
+                            dDistance = pFlowline_a.calculate_distance_to_polyline(pFlowline_b )
                             if dDistance < dDistance_tolerance_in:
                                 iFlag_keep = 0
                                 print('Flowline ', iStream_segment_a, ' intersects with flowline ', iStream_segment_b, ' with distance: ', dDistance)
@@ -493,7 +492,7 @@ def simplify_hydrorivers_networks(sFilename_flowline_hydroshed_in,
                                         #this is the flowline that we are looking for
                                         continue
                                     else:
-                                        dDistance = pFlowline_a.calculate_distance_to_flowline( pFlowline_b )
+                                        dDistance = pFlowline_a.calculate_distance_to_polyline( pFlowline_b )
                                         if dDistance < dDistance_tolerance_in:
                                             iFlag_keep = 0
                                             print('Flowline ', iSegment_upstream, ' intersects with flowline ', iStream_segment_b, ' with distance: ', dDistance)
@@ -540,7 +539,7 @@ def simplify_hydrorivers_networks(sFilename_flowline_hydroshed_in,
                                             #how about the other flowline? we dont need to check the distance
                                             #and we dont need to remove others for now
                                         else:
-                                            dDistance = pFlowline_a.calculate_distance_to_flowline( pFlowline_b )
+                                            dDistance = pFlowline_a.calculate_distance_to_polyline( pFlowline_b )
                                             if dDistance < dDistance_tolerance_in:
                                                 if dDrainage_area_b < dDrainage_area_a: #the other flowline is a smaller one, we can remove it?
                                                     success = remove_flowline_by_id(aFlowline_rtree, iStream_segment_b)
@@ -597,6 +596,8 @@ def simplify_hydrorivers_networks(sFilename_flowline_hydroshed_in,
 
     aFlowline_rtree_all = list()
     aFlowline_rtree = list()
+    print('Start simplifying each basin...')
+    sys.stdout.flush()
     for i in range(0, nFlowline_outlet, 1):
         sBasin = "{:04d}".format(i+1)
         sFilename_flowline_hydroshed_simplified = sFilename_flowline_hydroshed_out.replace('.geojson', '_'+sBasin + '.geojson')
@@ -672,6 +673,8 @@ def simplify_hydrorivers_networks(sFilename_flowline_hydroshed_in,
             aFlowline_rtree_all.append(pFlowline)
 
         print('Processed river network', i)
+        #flush print buffer
+        sys.stdout.flush()
 
     #save the flowlines
     #aFlowline_after_distance_operation = aFlowline_hydroshed_outlet_simplified + aFlowline_upstream_simplified

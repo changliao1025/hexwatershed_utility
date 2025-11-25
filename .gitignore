@@ -144,3 +144,7 @@ Thumbs.db
 *.dbf
 *.shp
 retired
+
+core*
+*.log
+*.sqlite

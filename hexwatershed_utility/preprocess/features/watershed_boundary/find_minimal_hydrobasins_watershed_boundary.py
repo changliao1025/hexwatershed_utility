@@ -236,7 +236,3 @@ def find_minimal_hydrobasins_watershed_boundary(sFilename_river_network_in, sFol
             else:
                 #print(f"Found containing watershed boundary at level {sLevel}: {sWkt}")
                 return sWkt
-
-
-
-

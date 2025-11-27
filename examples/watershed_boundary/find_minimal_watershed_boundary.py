@@ -4,17 +4,17 @@ import re
 from osgeo import gdal, ogr
 gdal.UseExceptions()
 from hexwatershed_utility.preprocess.features.watershed_boundary.find_minimal_hydrobasins_watershed_boundary import find_minimal_hydrobasins_watershed_boundary
-
+from hexwatershed_utility.preprocess.features.watershed_boundary.reorganize_boundary import reorganize_boundary
 
 dResolution_land = 10
 dDistance_tolerance_in = dResolution_land * 1.0E3
 
 
-dDrainage_area_threshold_in = dResolution_land * dResolution_land *10 * 1.0E6 #km2
+dDrainage_area_threshold_in = dResolution_land * dResolution_land *100 * 1.0E6 #km2
 sDistance_tolerance = "{:.2E}".format(dDistance_tolerance_in)
 sDrainage_area_threshold = "{:.2E}".format(dDrainage_area_threshold_in)
 
-
+sFolder = sDistance_tolerance + '_' + sDrainage_area_threshold
 
 sFolder_watershed_boundary_in = '/compyfs/liao313/00raw/hydrology/hydrosheds/hydrobasin'
 sFolder_out  = '/compyfs/liao313/04model/pyhexwatershed/global/watershed_boundary'
@@ -27,19 +27,23 @@ aFilename = list()
 #find all the geojson files in the folder
 aFilename = glob.glob(os.path.join(sFolder_in, '*.geojson'))
 
-for i in range(12, 13):
+for i in range(1, 3):
 #for sFilename_river_network_in in aFilename:
     sBasin  = f'{i:04d}'
     #sFilename_river_network_in = '/compyfs/liao313/04model/pyhexwatershed/northamerica/river_network/HydroRIVERS_v10_na_simplified_1.25E+04_3.12E+09_'+sBasin+'_outlet_simplified.geojson'
     #use glob to find the file
-    aFile = glob.glob(os.path.join(sFolder_in, f'*{sBasin}.geojson'))
+    aFile = glob.glob(os.path.join(sFolder_in, sFolder, f'*{sBasin}.geojson'))
     if len(aFile) == 0:
         print(f"No file found for basin {sBasin}")
         continue
     sFilename_river_network_in = aFile[0]
 
-    wkt = find_minimal_hydrobasins_watershed_boundary(sFilename_river_network_in, sFolder_watershed_boundary_in)
+    aWkt = find_minimal_hydrobasins_watershed_boundary(sFilename_river_network_in, sFolder_watershed_boundary_in, iFlag_nested_in=True)
     #save a geojson file
+
+    wkt = reorganize_boundary(aWkt, sFilename_out='/qfs/people/liao313/workspace/python/hexwatershed_utility/data/global/watershed_boundary_temp.geojson')
+
+    exit()
     #sFilename_out = os.path.join(sFolder_out, f"watershed_boundary_{sBasin}.geojson")
     #sBasin = os.path.splitext(os.path.basename(sFilename_river_network_in))[1]
     if wkt is not None:
@@ -73,4 +77,3 @@ for i in range(12, 13):
     else:
         sBasin = None
 
-print(f"Minimal watershed boundary WKT: {wkt}")

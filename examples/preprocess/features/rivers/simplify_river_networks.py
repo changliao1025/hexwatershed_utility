@@ -10,10 +10,10 @@ sWorkspace_out = '/qfs/people/liao313/data/hexwatershed/conus/vector/hydrology'
 sWorkspace_out = '/compyfs/liao313/00raw/hydrology/conus/vector/rivers'
 
 dResolution_land = 10
-dDistance_tolerance_in = dResolution_land * 1.0E3
+dDistance_tolerance_in = dResolution_land * 1.0E3 #in meter
 
 
-dDrainage_area_threshold_in = dResolution_land * dResolution_land *10 * 1.0E6 #km2
+dDrainage_area_threshold_in = dResolution_land * dResolution_land *10 * 1.0E6 #m2
 sDistance_tolerance = "{:.2E}".format(dDistance_tolerance_in)
 sDrainage_area_threshold = "{:.2E}".format(dDrainage_area_threshold_in)
 
@@ -27,4 +27,7 @@ if not os.path.exists(sWorkspace_out):
 
 sFilename_flowline_hydroshed_out =  os.path.join(sWorkspace_out, sFilename_flowline_hydroshed_out)
 
-simplify_hydrorivers_networks(sFilename_flowline_hydroshed_in, sFilename_flowline_hydroshed_out, dDistance_tolerance_in, dDrainage_area_threshold_in)
+simplify_hydrorivers_networks(sFilename_flowline_hydroshed_in, sFilename_flowline_hydroshed_out,
+                               dDistance_tolerance_in, dDrainage_area_threshold_in,
+                               iFlag_pyflowline_configuration_in=0,
+                               nOutlet_largest=1)

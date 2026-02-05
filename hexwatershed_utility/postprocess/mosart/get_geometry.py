@@ -4,7 +4,7 @@ import numpy as np
 from pyearth.gis.gdal.read.raster.gdal_read_envi_file import gdal_read_envi_file_multiple_band
 from pyearth.gis.geometry.calculate_distance_based_on_longitude_latitude import calculate_distance_based_on_longitude_latitude
 
-from hexwatershed_utility.mosart.find_contributing_cells import find_contributing_cells
+from hexwatershed_utility.postprocess.mosart.find_contributing_cells import find_contributing_cells
 
 def get_geometry(aLongitude_in, aLatitude_in, aCellID, aCellID_downslope, aArea, pWidth_in = None, pDepth_in = None):
     """

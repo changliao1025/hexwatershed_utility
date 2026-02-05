@@ -78,15 +78,6 @@ for i in range(nFeature_dam):
     if iProjection_dam == 1:
         pGeometry_dam.TransformTo(srs)
 
-    # List all attributes of the dam feature
-    #pDefn = pFeature_dam.GetDefnRef()
-    #nFields = pDefn.GetFieldCount()
-    #print(f"Feature {i} attributes:")
-    #for j in range(nFields):
-    #    fieldDefn = pDefn.GetFieldDefn(j)
-    #    fieldName = fieldDefn.GetNameRef()
-    #    fieldValue = pFeature_dam.GetField(j)
-    #    print(f"  {fieldName}: {fieldValue}")
 
     pPoint_dam = pGeometry_dam.GetPoint()
     dLongitude = pPoint_dam[0]

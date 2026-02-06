@@ -12,7 +12,7 @@ Features:
 - Support for multiple output formats
 """
 
-import os
+import os,sys
 import logging
 import traceback
 import math
@@ -33,30 +33,15 @@ VALID_ANIMATION_FORMATS = ['mp4', 'gif', 'avi']
 VALID_IMAGE_FORMATS = ['.png', '.jpg', '.jpeg', '.svg', '.tif', '.tiff']
 COORDINATE_BOUNDS = {'longitude': (-180, 180), 'latitude': (-90, 90)}
 
+sPath_library = 'C:\\workspace\\python\\pyearthviz3d'
+sys.path.append(sPath_library)
 from pyearthviz3d.geovista.map_single_frame import map_single_frame
-from pyearthviz3d.geovista.utility import VisualizationConfig, AnimationConfig
-
-
+from pyearthviz3d.geovista.animate_rotating_frames import animate_rotating_frames
+from pyearthviz3d.geovista.utility import VisualizationConfig, AnimationConfig, ScalarBarConfig
 
 def visualize_mpas_mesh(sFilename_mpas_mesh_in: str,
                           sFilename_out: Optional[str] = None,
-                          dLongitude_focus_in: Optional[float] = 0.0,
-                          dLatitude_focus_in: Optional[float] = 0.0,
-                          dZoom_factor: float = 0.7,
-                          iFlag_show_coastlines: bool = True,
-                          iFlag_show_graticule: bool = True,
-                          sCoastline_color: str = 'black',
-                          dCoastline_width: float = 1.0,
-                          iFlag_create_animation: Optional[bool] = False,
-                         iAnimation_frames: Optional[int] = 36,
-                         dAnimation_speed: Optional[float] = 1.0,
-                         sAnimation_format: Optional[str] = 'mp4',
-                         iFlag_wireframe_only: Optional[bool] = True,
-                          dEdge_width: float = 1.0,
-                          sEdge_color: str = 'black',
-                         iFlag_cull_backfaces: Optional[bool] = True,
-                         sCulling_mode: Optional[str] = 'auto',
-                         iFlag_verbose_in: Optional[bool] = False) -> bool:
+    **kwargs,) -> bool:
 
     """
     Visualize the source mesh topology using GeoVista 3D globe rendering.
@@ -94,6 +79,50 @@ def visualize_mpas_mesh(sFilename_mpas_mesh_in: str,
         - Interactive mode requires display environment
         - Mesh topology must be built before visualization (call rebuild_mesh_topology first)
     """
+    defaults = {
+        "dLongitude_focus_in": 0.0,
+        "dLatitude_focus_in": 0.0,
+        "dImage_scale_in": 1.0,
+        "dZoom_factor": 0.7,
+        "window_size_in": (800, 600),
+        "iFlag_show_coastlines": True,
+        "iFlag_show_graticule": True,
+        "sColormap": "viridis",
+        "sCoastline_color": "black",
+        "sBase_layer": "natural_earth_1",
+        "dCoastline_width": 1.0,
+        "iFlag_wireframe_only": False,
+        "iFlag_create_animation": False,
+        "iAnimation_frames": 36,
+        "dAnimation_speed": 1.0,
+        "sAnimation_format": "mp4",
+        "dEdge_width": 1.0,
+        "sEdge_color": "black",
+        "iFlag_verbose_in": False,
+    }
+    # Merge defaults with provided kwargs
+    merged_params = {**defaults, **kwargs}
+
+    # Extract parameters
+    dLongitude_focus_in = merged_params["dLongitude_focus_in"]
+    dLatitude_focus_in = merged_params["dLatitude_focus_in"]
+    dImage_scale_in = merged_params["dImage_scale_in"]
+    dZoom_factor = merged_params["dZoom_factor"]
+    window_size_in = merged_params["window_size_in"]
+    iFlag_show_coastlines = merged_params["iFlag_show_coastlines"]
+    iFlag_show_graticule = merged_params["iFlag_show_graticule"]
+    sColormap = merged_params["sColormap"]
+    sCoastline_color = merged_params["sCoastline_color"]
+    sBase_layer = merged_params["sBase_layer"]
+    dCoastline_width = merged_params["dCoastline_width"]
+    iFlag_create_animation = merged_params["iFlag_create_animation"]
+    iFlag_wireframe_only = merged_params["iFlag_wireframe_only"]
+    iAnimation_frames = merged_params["iAnimation_frames"]
+    dAnimation_speed = merged_params["dAnimation_speed"]
+    sAnimation_format = merged_params["sAnimation_format"]
+    iFlag_verbose_in = merged_params["iFlag_verbose_in"]
+    dEdge_width = merged_params["dEdge_width"]
+    sEdge_color = merged_params["sEdge_color"]
     # read the mpas mesh file
     import netCDF4 as nc
     try:
@@ -110,33 +139,23 @@ def visualize_mpas_mesh(sFilename_mpas_mesh_in: str,
         aConnectivity = pDataset.variables['verticesOnCell'][:]
         aCellID = pDataset.variables['indexToCellID'][:]
 
-
-
-
     except Exception as e:
         logger.error(f'Error reading mesh variables from {sFilename_mpas_mesh_in}: {e}')
         pDataset.close()
         return False
 
-
-
-
     try:
         # Import and setup GeoVista
         import geovista as gv
-
-
         # Validate connectivity array structure
         if aConnectivity.ndim != 2:
             logger.error(f'Connectivity array must be 2D, got {aConnectivity.ndim}D')
             return False
 
-
         # Convert 1-based connectivity indices to 0-based (MPAS uses 1-based indexing)
         # Invalid vertices are marked with fill_value (usually 0)
         fill_value = 0
         aConnectivity_0based = np.where(aConnectivity > fill_value, aConnectivity - 1, -1)
-
 
         # Create masked connectivity array (mask invalid indices)
         connectivity_masked = np.ma.masked_where(
@@ -153,8 +172,6 @@ def visualize_mpas_mesh(sFilename_mpas_mesh_in: str,
                            f'max={np.max(valid_connectivity)}, vertices={len(aVertex_longititude)}')
                 return False
 
-
-
         # Transform to GeoVista unstructured mesh
         pMesh = gv.Transform.from_unstructured(
              aVertex_longititude,
@@ -165,35 +182,69 @@ def visualize_mpas_mesh(sFilename_mpas_mesh_in: str,
 
         aValid_cell_indices = np.arange(len(aCellID))
 
-        dLongitude_focus_in = 0.0
-        dLatitude_focus_in = 0.0
-        sCoastline_color = "black"
-        dCoastline_width = 1.0
-        iFlag_verbose_in = 1
+        sScalar = "Cell ID"
+        pMesh.cell_data[sScalar] = aCellID
 
-        pConfig = VisualizationConfig(
+        config_static = VisualizationConfig(
             longitude_focus=dLongitude_focus_in,
             latitude_focus=dLatitude_focus_in,
-            window_size=(5000, 4000),
-            show_coastlines=True,
-            show_graticule=True,
+            image_scale=dImage_scale_in,
+            window_size=window_size_in,
+            zoom_factor=dZoom_factor,
+            show_coastlines=iFlag_show_coastlines,
+            show_graticule=iFlag_show_graticule,
+            colormap=sColormap,
             coastline_color=sCoastline_color,
             coastline_width=dCoastline_width,
             verbose=iFlag_verbose_in,
+        )
+        config_anima = (
+            AnimationConfig(
+                frames=iAnimation_frames,
+                speed=dAnimation_speed,
+                format=sAnimation_format,
+                longitude_start=dLongitude_focus_in,
+                latitude_start=dLatitude_focus_in,
+            )
+            if iFlag_create_animation
+            else None
+        )
+
+        config_colorbar = ScalarBarConfig(orientation = "vertical")
+
+        if iFlag_wireframe_only:
+            style = "wireframe"
+            if config_static.verbose:
+                logger.info("Using wireframe-only visualization mode")
+        else:
+            style = "surface"
+            if config_static.verbose:
+                logger.info("Using surface visualization mode")
+
+        # Handle animation vs single frame visualization
+        if config_anima is not None:
+            animate_rotating_frames(
+                pMesh,
+                aValid_cell_indices,
+                config_static,
+                config_anima,
+                style = style,
+                sScalar=sScalar,
+                sFilename_out=sFilename_out,
+            )
+        else:
+            map_single_frame(
+                pMesh,
+                aValid_cell_indices,
+                config_static,
+                style = style,
+                base_layer= sBase_layer,
+                sScalar=sScalar,
+                scalar_config = config_colorbar,
+                sFilename_out=sFilename_out,
             )
 
-
-
-        # Output or display
-
-        map_single_frame(pMesh,
-            aValid_cell_indices,
-            pConfig,
-            style = "wireframe",
-            sScalar = None,
-            sUnit = None,
-            sFilename_out = sFilename_out,
-            )
+        return True
 
     except ImportError as e:
         logger.error('GeoVista library not available. Install with: pip install geovista')

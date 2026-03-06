@@ -87,7 +87,7 @@ def map_mpas_mesh_on_sphere(sFilename_mpas_mesh_in: str,
         "iFlag_show_graticule": True,
         "sColormap": "viridis",
         "sCoastline_color": "black",
-        "sBase_layer": "natural_earth_1",
+        "sBase_layer": None, #'natural_earth_1',
         "dCoastline_width": 1.0,
         "iFlag_wireframe_only": False,
         "iFlag_create_animation": False,
@@ -97,6 +97,7 @@ def map_mpas_mesh_on_sphere(sFilename_mpas_mesh_in: str,
         "dEdge_width": 1.0,
         "sEdge_color": "black",
         "iFlag_verbose_in": False,
+        "sVariable_to_plot": None,
     }
     # Merge defaults with provided kwargs
     merged_params = {**defaults, **kwargs}
@@ -121,8 +122,20 @@ def map_mpas_mesh_on_sphere(sFilename_mpas_mesh_in: str,
     iFlag_verbose_in = merged_params["iFlag_verbose_in"]
     dEdge_width = merged_params["dEdge_width"]
     sEdge_color = merged_params["sEdge_color"]
+    sVariable_to_plot = merged_params["sVariable_to_plot"]
     # read the mpas mesh file
     import netCDF4 as nc
+    # Define a base window size and font size
+    base_window_size = 1200
+    base_font_size = 8
+    base_line_width = 0.1
+
+    # Calculate scaling factor
+    scaling_factor = max(window_size_in) / base_window_size
+
+    # Adjust font size
+    scaled_font_size = int(base_font_size * scaling_factor)
+    scaled_line_width = base_line_width * scaling_factor
     try:
         pDataset = nc.Dataset(sFilename_mpas_mesh_in, 'r')
     except Exception as e:
@@ -180,8 +193,20 @@ def map_mpas_mesh_on_sphere(sFilename_mpas_mesh_in: str,
 
         aValid_cell_indices = np.arange(len(aCellID))
 
-        sScalar = "Cell ID"
-        pMesh.cell_data[sScalar] = aCellID
+        if sVariable_to_plot is not None and sVariable_to_plot in pDataset.variables:
+            try:
+                variable_data = pDataset.variables[sVariable_to_plot][:]
+                if variable_data.shape[0] != len(aCellID):
+                    logger.error(f'Variable {sVariable_to_plot} length does not match number of cells')
+                    return False
+                pMesh.cell_data[sVariable_to_plot] = np.sqrt(variable_data)
+                sScalar = sVariable_to_plot
+            except Exception as e:
+                logger.error(f'Error reading variable {sVariable_to_plot} from dataset: {e}')
+                return False
+        else:
+            sScalar = "Cell ID"
+            pMesh.cell_data[sScalar] = aCellID
 
         config_static = VisualizationConfig(
             longitude_focus=dLongitude_focus_in,
@@ -195,6 +220,7 @@ def map_mpas_mesh_on_sphere(sFilename_mpas_mesh_in: str,
             coastline_color=sCoastline_color,
             coastline_width=dCoastline_width,
             verbose=iFlag_verbose_in,
+            base_layer=sBase_layer,
         )
         config_anima = (
             AnimationConfig(
@@ -207,8 +233,17 @@ def map_mpas_mesh_on_sphere(sFilename_mpas_mesh_in: str,
             if iFlag_create_animation
             else None
         )
+        scalar_config = ScalarBarConfig(
+                    title=sScalar,
+                    title_font_size=scaled_font_size,
+                    label_font_size=scaled_font_size,
+                    position_x=0.8,
+                    position_y=0.25,
+                    orientation="vertical",
+                    n_labels=5,
+                )
 
-        config_colorbar = None #ScalarBarConfig(orientation = "vertical")
+        config_colorbar = scalar_config if sVariable_to_plot is not None else None
 
         if iFlag_wireframe_only:
             style = "wireframe"
@@ -228,15 +263,17 @@ def map_mpas_mesh_on_sphere(sFilename_mpas_mesh_in: str,
                 config_anima,
                 style = style,
                 sFilename_out=sFilename_out,
+                scalar_config=config_colorbar,
             )
         else:
             map_single_frame(
                 pMesh,
                 aValid_cell_indices,
                 config_static,
+                sScalar = sScalar,
                 style = style,
-                base_layer= sBase_layer,
                 sFilename_out=sFilename_out,
+                scalar_config=config_colorbar,
             )
 
         return True

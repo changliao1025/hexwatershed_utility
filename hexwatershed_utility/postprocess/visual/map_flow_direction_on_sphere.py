@@ -1,4 +1,4 @@
-from pyearth.visual.animate.animate_polyline_file_on_sphere import animate_polyline_file_on_sphere
+from pyearthviz3d.geovista.animate_polyline_file_on_sphere import animate_polyline_file_on_sphere
 sFilename_polyline_in = '/compyfs/liao313/04model/pyhexwatershed/global/pyhexwatershed20250928001/hexwatershed/mpas_flow_direction.geojson'
 
 animate_polyline_file_on_sphere(sFilename_polyline_in)

@@ -1,7 +1,7 @@
 
 import os, sys, platform
-from pyearth.visual.animate.animate_polyline_file_on_sphere import animate_polyline_file_on_sphere
-from pyearth.visual.map.vector.map_vector_polyline_file import map_vector_polyline_file
+
+from pyearthviz.map.vector.map_vector_polyline_file import map_vector_polyline_file
 sPlatform_os = platform.system()
 
 if sPlatform_os == 'Windows':

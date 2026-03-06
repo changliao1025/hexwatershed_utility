@@ -4,7 +4,7 @@ gdal.UseExceptions()
 import importlib.util
 iFlag_cython = importlib.util.find_spec("cython")
 if iFlag_cython is not None:
-    from tinyr import RTree
+    from rtree.index import Index as RTreeindex
     iFlag_use_rtree = 1
 else:
     iFlag_use_rtree = 0
@@ -67,7 +67,7 @@ def fix_naturalearth_hydrosheds_incompatibility(aFilename_hydrosheds_flowline, s
 
     if iFlag_use_rtree:
         print('Using RTree for spatial indexing')
-        land_spatial_index = RTree()
+        land_spatial_index = RTreeindex()
     else:
         print('Using dictionary-based spatial indexing (install tinyr for better performance)')
         land_spatial_index = {}

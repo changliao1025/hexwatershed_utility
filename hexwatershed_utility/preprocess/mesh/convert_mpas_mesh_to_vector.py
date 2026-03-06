@@ -6,20 +6,20 @@ import contextlib
 import numpy as np
 import netCDF4 as nc
 from osgeo import gdal, osr, ogr
-from pyearth.system.define_global_variables import *
-from pyearth.gis.gdal.gdal_validate_polygon_file import gdal_validate_polygon_file
 gdal.UseExceptions()
 gdal.PushErrorHandler('CPLQuietErrorHandler')
 iFlag_cython = importlib.util.find_spec("cython")
 if iFlag_cython is not None:
     from tinyr import RTree
 
+from pyearth.gis.gdal.gdal_vector_format_support import get_vector_driver_from_filename
+from pyearth.gis.gdal.gdal_validate_polygon_file import gdal_validate_polygon_file
 from pyearth.gis.geometry.convert_longitude_range import convert_360_to_180_np
-from pyearth.toolbox.data.geoparquet.convert_geojson_to_geoparquet import convert_geojson_to_geoparquet
-def convert_mpas_mesh_to_geojson( sFilename_mpas_mesh_netcdf_base,
-                                 sFilename_geojson_out ):
 
-    pDriver_geojson = ogr.GetDriverByName('GeoJSON')
+def convert_mpas_mesh_to_vector( sFilename_mpas_mesh_netcdf_base,
+                                 sFilename_vector_out ):
+
+    pDriver_out = get_vector_driver_from_filename(sFilename_vector_out)
     #check file existence
     if not os.path.exists(sFilename_mpas_mesh_netcdf_base):
         print("The mesh file does not exist, please check the file path")
@@ -27,8 +27,8 @@ def convert_mpas_mesh_to_geojson( sFilename_mpas_mesh_netcdf_base,
 
     #check output file, remove if exists
 
-    if os.path.exists(sFilename_geojson_out):
-        os.remove(sFilename_geojson_out)
+    if os.path.exists(sFilename_vector_out):
+        os.remove(sFilename_vector_out)
 
 
 
@@ -63,14 +63,13 @@ def convert_mpas_mesh_to_geojson( sFilename_mpas_mesh_netcdf_base,
     aLatitudeVertex = latVertex0[:] / math.pi * 180
     aLongitudeVertex = lonVertex0[:] / math.pi * 180
     aVertexOnCell = verticesOnCell0[:]
-    #aVertexOnEdge0 = verticesOnEdge0[:]
     aIndexToCellID = indexToCellID0[:]
     ncell = len(aIndexToCellID)
 
     pSpatialRef_target = osr.SpatialReference()
     pSpatialRef_target.ImportFromEPSG(4326)
 
-    pDataset = pDriver_geojson.CreateDataSource(sFilename_geojson_out)
+    pDataset = pDriver_out.CreateDataSource(sFilename_vector_out)
     pLayerOut = pDataset.CreateLayer('cell', pSpatialRef_target, ogr.wkbPolygon)
     #create field for id, lon, lat
     pFieldDefn = ogr.FieldDefn('id', ogr.OFTInteger)
@@ -123,19 +122,8 @@ def convert_mpas_mesh_to_geojson( sFilename_mpas_mesh_netcdf_base,
     pLayerOut = None
     pDataset = None
 
-
     #check whether all the polygons are valid
-    iFlag_valid = gdal_validate_polygon_file(sFilename_geojson_out)
+    iFlag_valid = gdal_validate_polygon_file(sFilename_vector_out)
     print("The validity of the polygon is: ", iFlag_valid)
 
     return
-
-if __name__ == '__main__':
-    sFilename_mpas_mesh_netcdf_base = '/compyfs/liao313/04model/pyhexwatershed/northamerica/pyflowline20250702011/jigsaw/out/base_mesh.nc'
-    sFilename_geojson_out = '/compyfs/liao313/04model/pyhexwatershed/northamerica/pyflowline20250702011/jigsaw/out/base_mesh.geojson'
-    convert_mpas_mesh_to_geojson(  sFilename_mpas_mesh_netcdf_base,
-                                sFilename_geojson_out )
-
-    #convert to geoparquet
-    sFilename_geoparquet_out = sFilename_geojson_out.replace('.geojson', '.parquet')
-    convert_geojson_to_geoparquet(sFilename_geojson_out, sFilename_geoparquet_out)

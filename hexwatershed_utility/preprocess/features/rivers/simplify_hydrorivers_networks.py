@@ -2,12 +2,16 @@ import os, sys
 sys.setrecursionlimit(100000)
 import numpy as np
 from osgeo import ogr, osr, gdal
-from tinyr import RTree
+
+from rtree.index import Index as RTreeindex
 from datetime import datetime
 from pyearth.toolbox.geometry.create_gcs_buffer_zone import create_polyline_buffer_zone
+from pyearth.gis.geometry.calculate_distance_based_on_longitude_latitude import (
+        calculate_distance_based_on_longitude_latitude
+    )
 from pyflowline.formats.convert_coordinates import convert_gcs_coordinates_to_flowline
 from pyflowline.formats.export_flowline import export_flowline_to_geojson
-from pyflowline.algorithms.cython.kernel import calculate_distance_based_on_longitude_latitude
+
 from pyflowline.classes.rivergraph import pyrivergraph
 from pyflowline.classes.confluence import pyconfluence
 from pyflowline.configuration.config_manager import create_pyflowline_template_configuration_file
@@ -296,7 +300,7 @@ def simplify_hydrorivers_networks(
     # step 1, filter outlet, if two outlets are too close, we need to remove smaller ones
 
     nFlowline_outlet = len(aFlowline_hydroshed_outlet)
-    index_outlet = RTree(max_cap=5, min_cap=2)
+    index_outlet = RTreeindex()
 
     # Use the precomputed bounds to build the RTree
     for i in range(nFlowline_outlet):
@@ -750,7 +754,7 @@ def simplify_hydrorivers_networks(
             stream_segment_dict = {seg: idx for idx, seg in enumerate(aStream_segment)}
             rtree_flowline_dict = {}
 
-            index_reach = RTree(max_cap=5, min_cap=2)
+            index_reach = RTreeindex()
             all_bounds_cache = precompute_flowline_geometries_by_segment(aFlowline_basin_simplified, dDistance_tolerance_in)
 
             pFlowline_outlet = aFlowline_basin_simplified[0]

@@ -33,13 +33,11 @@ VALID_ANIMATION_FORMATS = ['mp4', 'gif', 'avi']
 VALID_IMAGE_FORMATS = ['.png', '.jpg', '.jpeg', '.svg', '.tif', '.tiff']
 COORDINATE_BOUNDS = {'longitude': (-180, 180), 'latitude': (-90, 90)}
 
-sPath_library = 'C:\\workspace\\python\\pyearthviz3d'
-sys.path.append(sPath_library)
 from pyearthviz3d.geovista.map_single_frame import map_single_frame
 from pyearthviz3d.geovista.animate_rotating_frames import animate_rotating_frames
 from pyearthviz3d.geovista.utility import VisualizationConfig, AnimationConfig, ScalarBarConfig
 
-def visualize_mpas_mesh(sFilename_mpas_mesh_in: str,
+def map_mpas_mesh_on_sphere(sFilename_mpas_mesh_in: str,
                           sFilename_out: Optional[str] = None,
     **kwargs,) -> bool:
 
@@ -210,7 +208,7 @@ def visualize_mpas_mesh(sFilename_mpas_mesh_in: str,
             else None
         )
 
-        config_colorbar = ScalarBarConfig(orientation = "vertical")
+        config_colorbar = None #ScalarBarConfig(orientation = "vertical")
 
         if iFlag_wireframe_only:
             style = "wireframe"
@@ -229,7 +227,6 @@ def visualize_mpas_mesh(sFilename_mpas_mesh_in: str,
                 config_static,
                 config_anima,
                 style = style,
-                sScalar=sScalar,
                 sFilename_out=sFilename_out,
             )
         else:
@@ -239,8 +236,6 @@ def visualize_mpas_mesh(sFilename_mpas_mesh_in: str,
                 config_static,
                 style = style,
                 base_layer= sBase_layer,
-                sScalar=sScalar,
-                scalar_config = config_colorbar,
                 sFilename_out=sFilename_out,
             )
 

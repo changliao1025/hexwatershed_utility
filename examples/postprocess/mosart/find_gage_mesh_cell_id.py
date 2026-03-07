@@ -4,12 +4,12 @@ import numpy as np
 import importlib.util
 import netCDF4 as nc
 from osgeo import osr, ogr, gdal
-from pyearth.system.define_global_variables import *
+from rtree.index import Index as RTreeindex
+
 iFlag_cython = importlib.util.find_spec("cython")
 
-if iFlag_cython is not None:
-    from tinyr import RTree
-    iFlag_use_rtree = 1
+
+iFlag_use_rtree = 1
 
 def find_gage_mesh_cell_id(aSitename_in, aLongitude_gage_in, aLatitude_gage_in, aDrainage_area_in,
                             sFilename_domain_in,
@@ -48,7 +48,7 @@ def find_gage_mesh_cell_id(aSitename_in, aLongitude_gage_in, aLatitude_gage_in, 
 
     if iFlag_use_rtree == 1:
         #read mesh using the
-        index_cell = RTree(max_cap=5, min_cap=2)
+        index_cell = RTreeindex()
     else:
         print('Rtree is not supported')
 
@@ -185,7 +185,7 @@ def find_gage_mesh_cell_id(aSitename_in, aLongitude_gage_in, aLatitude_gage_in, 
         top =    dLatitude_gage + dBuffer
         pBound= (left, bottom, right, top)
 
-        aIntersect = list(index_cell.search( pBound )  )
+        aIntersect = list(index_cell.intersection(pBound))
 
         iFlag_qa = 0
         if len(aIntersect) == 0:

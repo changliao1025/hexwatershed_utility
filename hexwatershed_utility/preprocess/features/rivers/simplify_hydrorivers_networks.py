@@ -623,7 +623,7 @@ def simplify_hydrorivers_networks(
                                 pass
                             pass
                         else:
-                            aIntersect = list(index_reach.search(pBound_a))
+                            aIntersect = list(index_reach.intersection(pBound_a))
                             nIntersect = len(aIntersect)
                             if nIntersect>0:
                                 iFlag_keep = 1

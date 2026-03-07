@@ -128,7 +128,7 @@ def fix_naturalearth_hydrosheds_incompatibility(aFilename_hydrosheds_flowline, s
             if iFlag_use_rtree:
                 # RTree expects (minX, minY, maxX, maxY)
                 query_bbox = (flowline_envelope[0], flowline_envelope[2], flowline_envelope[1], flowline_envelope[3])
-                candidate_indices = list(land_spatial_index.search(query_bbox))
+                candidate_indices = list(land_spatial_index.intersection(query_bbox))
             else:
                 # Fallback: check bounding box overlap for all polygons
                 for idx, land_envelope in land_spatial_index.items():

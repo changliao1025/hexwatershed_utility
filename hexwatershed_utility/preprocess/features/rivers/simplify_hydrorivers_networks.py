@@ -313,7 +313,7 @@ def simplify_hydrorivers_networks(
     for i in range(nFlowline_outlet):
         # Use cached bounds directly
         pBound = outlet_bounds_cache[aFlowline_hydroshed_outlet[i].lFlowlineID]
-        aIntersect = list(index_outlet.search(pBound))
+        aIntersect = list(index_outlet.intersection(pBound))
         #lon1 = 0.5 * (aFlowline_hydroshed_outlet[i].pVertex_start.dLongitude_degree + aFlowline_hydroshed_outlet[i].pVertex_end.dLongitude_degree)
         #lat1 = 0.5 * (aFlowline_hydroshed_outlet[i].pVertex_start.dLatitude_degree + aFlowline_hydroshed_outlet[i].pVertex_end.dLatitude_degree)
         lon1 = aFlowline_hydroshed_outlet[i].pVertex_end.dLongitude_degree
@@ -504,7 +504,7 @@ def simplify_hydrorivers_networks(
                 pFlowline_a = aFlowline_basin_simplified[index_current]
                 #get its bound
                 pBound = all_bounds_cache[iStream_segment_a]
-                aIntersect = list(index_reach.search(pBound))
+                aIntersect = list(index_reach.intersection(pBound))
                 nIntersect = len(aIntersect)
                 if nIntersect > 0: #there are some flowlines that intersect with the current flowline
                     iFlag_keep = 1
@@ -579,7 +579,7 @@ def simplify_hydrorivers_networks(
                         dDrainage_area_a = pFlowline_a.dDrainage_area
                         pBound_a = all_bounds_cache[iSegment_upstream]
                         if iStream_order_a == 1:
-                            aIntersect = list(index_reach.search(pBound_a))
+                            aIntersect = list(index_reach.intersection(pBound_a))
                             nIntersect = len(aIntersect)
                             if nIntersect>0:
                                 iFlag_keep = 1

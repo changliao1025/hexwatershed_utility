@@ -5,10 +5,10 @@ gdal.UseExceptions()
 
 from pyearth.toolbox.management.vector.remove_small_polygon import remove_small_polygon
 from pyearth.toolbox.management.vector.merge_features import merge_features
-from pyearth.toolbox.geometry.create_gcs_buffer_zone import create_buffer_zone_polygon_file
 from pyearth.toolbox.conversion.convert_vector_to_global_raster import convert_vector_to_global_raster
 from pyearth.toolbox.data.ocean.define_land_ocean_mask import create_land_ocean_vector_mask_naturalearth
 from pyearth.toolbox.analysis.image.raster_process import fix_raster_antimeridian_issue
+from pyearthbuffer.utility.create_gcs_buffer_zone import create_buffer_zone_polygon_file
 def create_land_ocean_mask_from_naturalearth(sWorkspace_coastline_output,
                                                                              dResolution_x_in, dResolution_y_in,
                                                                              dThreshold_area_island,

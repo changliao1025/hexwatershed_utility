@@ -90,7 +90,7 @@ def simplify_hydrorivers_networks(
     dDrainage_area_threshold_in: float,
     iFlag_pyflowline_configuration_in: int = 1,
     nOutlet_largest: int = 10
-) -> None:
+) -> int:
     """
     Simplify hydrological river networks by merging nearby flowlines and filtering by drainage area.
 
@@ -124,8 +124,8 @@ def simplify_hydrorivers_networks(
 
     Returns
     -------
-    None
-        Function performs file I/O operations and generates output files. No value is returned.
+    int
+        Actual number of largest outlet basins processed and saved.
 
     Output Files
     ------------
@@ -685,6 +685,7 @@ def simplify_hydrorivers_networks(
             #if a flowline has no upstream, then it is a headwater
             pass
 
+    nOutlet_actual = min(nOutlet_largest, nFlowline_outlet)
     nBasin = nFlowline_outlet
     aOulet_coordate= np.full( (nBasin, 2), -9999, dtype=float)
 
@@ -697,7 +698,7 @@ def simplify_hydrorivers_networks(
         create_pyflowline_template_configuration_file(sFilename_configuration_json,
             sWorkspace_output = sWorkspace_output,
             iFlag_standalone_in=1,
-            nOutlet = nOutlet_largest,
+            nOutlet = nOutlet_actual,
             sMesh_type_in='mpas',
             sModel_in='pyflowline')
         sFilename_configuration_basin_json = os.path.join(sWorkspace_output, 'pyflowline_configuration_basins.json')
@@ -713,7 +714,8 @@ def simplify_hydrorivers_networks(
         log_file.write(f"Output file: {sFilename_flowline_hydroshed_out}\n")
         log_file.write(f"Distance tolerance: {dDistance_tolerance_in:.2f} m\n")
         log_file.write(f"Drainage area threshold: {dDrainage_area_threshold_in:.2e} m²\n")
-        log_file.write(f"Number of largest basins to save: {nOutlet_largest}\n")
+        log_file.write(f"Number of largest basins requested: {nOutlet_largest}\n")
+        log_file.write(f"Number of largest basins available: {nOutlet_actual}\n")
         log_file.write("=" * 80 + "\n\n")
         log_file.write(f"{'Basin':<8} {'River Name':<40} {'Drainage Area (km²)':<20} {'Drainage Area (m²)':<20}\n")
         log_file.write("-" * 80 + "\n")
@@ -765,7 +767,7 @@ def simplify_hydrorivers_networks(
             tag_upstream(pFlowline_outlet.iStream_segment, dDrainage_area_threshold)
 
         #now save the flowlines
-        if i < nOutlet_largest:
+        if i < nOutlet_actual:
             # Log river name and drainage area for largest basins
             lFlowlineID_current = pFlowline_current.lFlowlineID
             sRiver_name = river_name_dict.get(lFlowlineID_current, f"River_{lFlowlineID_current}")
@@ -804,7 +806,7 @@ def simplify_hydrorivers_networks(
         # Collect flowlines from the nOutlet_largest basins
         for pFlowline in aFlowline_rtree:
             aFlowline_rtree_all.append(pFlowline)
-            if i < nOutlet_largest:
+            if i < nOutlet_actual:
                 aFlowline_rtree_largest.append(pFlowline)
 
         print('Processed river network', i)
@@ -814,7 +816,7 @@ def simplify_hydrorivers_networks(
     #save the flowlines
     export_flowline_to_geojson(aFlowline_rtree_all, sFilename_flowline_hydroshed_out)
 
-    # Save the nOutlet_largest basins combined into one GeoJSON file
+    # Save the largest available basins combined into one GeoJSON file
     if len(aFlowline_rtree_largest) > 0:
         sFilename_largest_basins = sFilename_flowline_hydroshed_out.replace('.geojson', '_largest.geojson')
         # Collect attributes for the largest basins
@@ -831,8 +833,8 @@ def simplify_hydrorivers_networks(
                                    aAttribute_data=[aStream_segment_largest, aStream_order_largest],
                                    aAttribute_field=['stream_segment','stream_order'],
                                    aAttribute_dtype=['int','int'])
-        print(f'Saved {nOutlet_largest} largest basins combined to: {sFilename_largest_basins}')
-        print(f'Number of flowlines in largest {nOutlet_largest} basins: {len(aFlowline_rtree_largest)}')
+        print(f'Saved {nOutlet_actual} largest basins combined to: {sFilename_largest_basins}')
+        print(f'Number of flowlines in largest {nOutlet_actual} basins: {len(aFlowline_rtree_largest)}')
 
     #close the file
     pDataset_in = pLayer_shapefile = pFeature_shapefile = None
@@ -844,17 +846,18 @@ def simplify_hydrorivers_networks(
         log_file.write("Summary\n")
         log_file.write("=" * 80 + "\n")
         log_file.write(f"Total number of outlet flowlines: {nFlowline_outlet}\n")
-        log_file.write(f"Number of largest basins logged: {min(nOutlet_largest, nFlowline_outlet)}\n")
+        log_file.write(f"Number of largest basins requested: {nOutlet_largest}\n")
+        log_file.write(f"Number of largest basins logged: {nOutlet_actual}\n")
         log_file.write(f"Total flowlines in simplified network: {len(aFlowline_rtree_all)}\n")
-        log_file.write(f"Flowlines in {nOutlet_largest} largest basins: {len(aFlowline_rtree_largest)}\n")
+        log_file.write(f"Flowlines in {nOutlet_actual} largest basins: {len(aFlowline_rtree_largest)}\n")
         log_file.write(f"\nOutput files:\n")
         log_file.write(f"  - All basins: {sFilename_flowline_hydroshed_out}\n")
         if len(aFlowline_rtree_largest) > 0:
             sFilename_largest_basins = sFilename_flowline_hydroshed_out.replace('.geojson', '_largest.geojson')
-            log_file.write(f"  - {nOutlet_largest} largest basins combined: {sFilename_largest_basins}\n")
+            log_file.write(f"  - {nOutlet_actual} largest basins combined: {sFilename_largest_basins}\n")
         log_file.write(f"\nLogfile saved to: {sFilename_logfile}\n")
         log_file.write("=" * 80 + "\n")
 
     print(f'River name and drainage area logfile saved to: {sFilename_logfile}')
-    return
+    return nOutlet_actual
 

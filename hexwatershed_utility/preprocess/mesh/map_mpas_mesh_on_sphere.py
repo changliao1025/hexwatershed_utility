@@ -98,6 +98,8 @@ def map_mpas_mesh_on_sphere(sFilename_mpas_mesh_in: str,
         "sEdge_color": "black",
         "iFlag_verbose_in": False,
         "sVariable_to_plot": None,
+        "dBase_layer_opacity": 1.0,
+        "dMesh_opacity": 1.0,
     }
     # Merge defaults with provided kwargs
     merged_params = {**defaults, **kwargs}
@@ -221,6 +223,8 @@ def map_mpas_mesh_on_sphere(sFilename_mpas_mesh_in: str,
             coastline_width=dCoastline_width,
             verbose=iFlag_verbose_in,
             base_layer=sBase_layer,
+            base_layer_opacity=merged_params.get("dBase_layer_opacity", 1.0),
+            mesh_opacity=merged_params.get("dMesh_opacity", 1.0),
         )
         config_anima = (
             AnimationConfig(

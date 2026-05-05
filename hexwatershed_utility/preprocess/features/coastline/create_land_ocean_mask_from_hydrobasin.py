@@ -3,12 +3,11 @@ import glob
 from osgeo import gdal, ogr
 gdal.UseExceptions()
 
-from pyearth.toolbox.management.vector.merge_files import merge_files
+from pyearth.toolbox.management.vector.merge_vector_files import merge_vector_files
 from pyearth.toolbox.management.vector.remove_small_polygon import remove_small_polygon
 from pyearth.toolbox.management.vector.merge_features import merge_features
-from pyearth.toolbox.geometry.create_gcs_buffer_zone import create_buffer_zone_polygon_file
-from pyearth.toolbox.conversion.convert_vector_format import convert_vector_format
 from pyearth.toolbox.conversion.convert_vector_to_global_raster import convert_vector_to_global_raster
+from pyearthbuffer.utility.create_gcs_buffer_zone import create_buffer_zone_polygon_file
 def create_land_ocean_mask_from_hydrobasin(sWorkspace_coastline_output,
                                                                              sWorkspace_watershed_boundary_in,
                                                                              dResolution_x_in, dResolution_y_in,
@@ -50,12 +49,11 @@ def create_land_ocean_mask_from_hydrobasin(sWorkspace_coastline_output,
 
     # Merge all the geojson files into a single file
     sFilename_merge = os.path.join(sWorkspace_coastline_output, 'hybas_lake_all_lev03.parquet')
-    merge_files(aWatershed_boundary, sFilename_merge, sFormat='Parquet')
+    merge_vector_files(aWatershed_boundary, sFilename_merge, sFormat='Parquet')
 
     sFilename_wo_island = os.path.join(sWorkspace_coastline_output, 'land_ocean_mask_wo_island.parquet')
     remove_small_polygon(sFilename_merge, sFilename_wo_island, dThreshold_area_island )
 
-    exit()
     sFilename_vector_merged_raw = os.path.join(sWorkspace_coastline_output, 'land_ocean_mask_wo_island_merged_raw.parquet')
     merge_features(sFilename_wo_island, sFilename_vector_merged_raw)
 
@@ -67,7 +65,7 @@ def create_land_ocean_mask_from_hydrobasin(sWorkspace_coastline_output,
                                     iFlag_boundary_only_in = 0,
                                     dFill_value_in = 2)
 
-    exit
+
     sFilename_parquet_buffer = os.path.join(sWorkspace_coastline_output, 'land_ocean_mask_buffer.parquet')
     create_buffer_zone_polygon_file(sFilename_vector_merged_raw, sFilename_parquet_buffer,
                                           dBuffer_distance_in = dResolution_coastline_buffer * 1000)

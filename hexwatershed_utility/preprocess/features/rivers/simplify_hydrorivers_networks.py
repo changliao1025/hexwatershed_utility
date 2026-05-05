@@ -5,10 +5,11 @@ from osgeo import ogr, osr, gdal
 
 from rtree.index import Index as RTreeindex
 from datetime import datetime
-from pyearth.toolbox.geometry.create_gcs_buffer_zone import create_polyline_buffer_zone
+
 from pyearth.gis.geometry.calculate_distance_based_on_longitude_latitude import (
         calculate_distance_based_on_longitude_latitude
     )
+from pyearthbuffer.utility.create_gcs_buffer_zone import create_polyline_buffer_zone
 from pyflowline.formats.convert_coordinates import convert_gcs_coordinates_to_flowline
 from pyflowline.formats.export_flowline import export_flowline_to_geojson
 
@@ -334,7 +335,7 @@ def simplify_hydrorivers_networks(
                 else:
                     if dDistance < dDistance_tolerance_in:
                         #we need remove one of them
-                        if dDrainage_area_a > dDrainage_area_b :
+                        if dDrainage_area_a > dDrainage_area_b:
                             aFlowline_hydroshed_outlet[i].iFlag_keep = 1
                             aFlowline_hydroshed_outlet[aIntersect[j]].iFlag_keep = 0
                         else:

@@ -9,9 +9,9 @@ if iFlag_cython is not None:
 else:
     iFlag_use_rtree = 0
 
-from pyearth.toolbox.geometry.create_gcs_buffer_zone import create_polyline_buffer_zone
 from pyearth.gis.geometry.calculate_distance_based_on_longitude_latitude import calculate_distance_based_on_longitude_latitude
 from pyearth.toolbox.management.vector.merge_features import merge_features
+from pyearthbuffer.utility.create_gcs_buffer_zone import create_polyline_buffer_zone
 
 def geometries_bbox_overlap(bbox1, bbox2, tolerance=1e-10):
     """

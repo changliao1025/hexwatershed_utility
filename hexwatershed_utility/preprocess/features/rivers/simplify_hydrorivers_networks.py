@@ -17,6 +17,7 @@ from pyflowline.classes.rivergraph import pyrivergraph
 from pyflowline.classes.confluence import pyconfluence
 from pyflowline.configuration.config_manager import create_pyflowline_template_configuration_file
 from pyflowline.configuration.change_json_key_value import change_json_key_value
+from hexwatershed_utility.preprocess.features.rivers.get_outlet_location import get_outlet_location
 
 def convert_geometry_flowline(pGeometry_in, lFlowlineIndex, lID, lOutletID, lStream_order):
     aCoords = list()
@@ -167,6 +168,100 @@ def simplify_hydrorivers_networks(
     ... )
     """
     dDrainage_area_threshold_ratio = 0.05
+
+    # Check if output already exists and we can just generate configuration files
+    sWorkspace_output = os.path.dirname(sFilename_flowline_hydroshed_out)
+    if os.path.exists(sFilename_flowline_hydroshed_out):
+        # Check for individual basin files to determine nOutlet_actual
+        nOutlet_actual = 0
+        for i in range(1, nOutlet_largest + 1):
+            sBasin = "{:04d}".format(i)
+            sFilename_basin = sFilename_flowline_hydroshed_out.replace('.geojson', '_'+sBasin + '.geojson')
+            if os.path.exists(sFilename_basin):
+                nOutlet_actual = i
+            else:
+                break
+
+        if nOutlet_actual > 0:
+            print('='*80)
+            print('DETECTED EXISTING RIVER NETWORK DATA')
+            print('='*80)
+            print(f'Output file already exists: {sFilename_flowline_hydroshed_out}')
+            print(f'Found {nOutlet_actual} existing basin files')
+
+            # Check if we need to generate configuration files
+            if iFlag_pyflowline_configuration_in == 1:
+                sFilename_configuration_json = os.path.join(sWorkspace_output, 'pyflowline_configuration.json')
+                sFilename_configuration_basin_json = os.path.join(sWorkspace_output, 'pyflowline_configuration_basins.json')
+
+                # Check if configuration files already exist
+                if os.path.exists(sFilename_configuration_json) and os.path.exists(sFilename_configuration_basin_json):
+                    print('Configuration files already exist. Skipping generation.')
+                    print('='*80)
+                    return nOutlet_actual
+
+                print('Generating pyflowline configuration files from existing data...')
+
+                # Create pyflowline configuration files
+                create_pyflowline_template_configuration_file(
+                    sFilename_configuration_json,
+                    sWorkspace_output=sWorkspace_output,
+                    iFlag_standalone_in=1,
+                    nOutlet=nOutlet_actual,
+                    sMesh_type_in='mpas',
+                    sModel_in='pyflowline'
+                )
+
+                # Update basin-specific configuration
+                # Since basin files are already sorted by drainage area, we can use get_outlet_location directly
+                for i in range(nOutlet_actual):
+                    sBasin = "{:04d}".format(i + 1)
+                    sFilename_basin = sFilename_flowline_hydroshed_out.replace('.geojson', '_' + sBasin + '.geojson')
+
+                    # Use get_outlet_location to get outlet coordinates from the basin file
+                    try:
+                        dLongitude_outlet, dLatitude_outlet = get_outlet_location(sFilename_basin)
+                        # Try to get drainage area from the basin file attributes
+                        pDriver_geojson = ogr.GetDriverByName("GeoJSON")
+                        pDataset_basin = pDriver_geojson.Open(sFilename_basin, gdal.GA_ReadOnly)
+                        dDrainage_area = dDrainage_area_threshold_in
+                        if pDataset_basin is not None:
+                            pLayer_basin = pDataset_basin.GetLayer(0)
+                            pFeature_basin = pLayer_basin.GetFeature(0)
+                            if pFeature_basin is not None:
+                                try:
+                                    if pFeature_basin.GetFieldIndex("drainage_area") >= 0:
+                                        dDrainage_area = pFeature_basin.GetField("drainage_area")
+                                except:
+                                    pass
+                            pDataset_basin = None
+
+                        dDrainage_area_threshold = dDrainage_area * dDrainage_area_threshold_ratio
+
+                        # Update configuration for this basin
+                        change_json_key_value(sFilename_configuration_basin_json, 'dAccumulation_threshold',
+                                            dDrainage_area_threshold, iFlag_basin_in=1, iBasin_index_in=i)
+                        change_json_key_value(sFilename_configuration_basin_json, 'dLatitude_outlet_degree',
+                                            dLatitude_outlet, iFlag_basin_in=1, iBasin_index_in=i)
+                        change_json_key_value(sFilename_configuration_basin_json, 'dLongitude_outlet_degree',
+                                            dLongitude_outlet, iFlag_basin_in=1, iBasin_index_in=i)
+                        change_json_key_value(sFilename_configuration_basin_json, 'sFilename_flowline_filter',
+                                            sFilename_basin, iFlag_basin_in=1, iBasin_index_in=i)
+                    except ValueError as e:
+                        print(f"Warning: Could not get outlet location for basin {sBasin}: {e}")
+                        continue
+
+                print(f'Generated pyflowline configuration files:')
+                print(f'  - Main config: {sFilename_configuration_json}')
+                print(f'  - Basin config: {sFilename_configuration_basin_json}')
+                print(f'  - Number of basins: {nOutlet_actual}')
+                print('='*80)
+                return nOutlet_actual
+
+            print('Skipping river network simplification (data already processed)')
+            print('='*80)
+            return nOutlet_actual
+
     ### Simplify hydroshed flowlines
     #check file exists
     if not os.path.isfile(sFilename_flowline_hydroshed_in):

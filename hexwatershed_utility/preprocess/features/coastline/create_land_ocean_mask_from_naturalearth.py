@@ -4,6 +4,7 @@ from osgeo import gdal, ogr
 gdal.UseExceptions()
 
 from pyearth.toolbox.management.vector.remove_small_polygon import remove_small_polygon
+from pyearth.toolbox.management.vector.remove_internal_polygon import remove_internal_polygon
 from pyearth.toolbox.management.vector.merge_features import merge_features
 from pyearth.toolbox.conversion.convert_vector_to_global_raster import convert_vector_to_global_raster
 from pyearth.toolbox.data.ocean.define_land_ocean_mask import create_land_ocean_vector_mask_naturalearth
@@ -22,8 +23,11 @@ def create_land_ocean_mask_from_naturalearth(sWorkspace_coastline_output,
     sFilename_wo_island = os.path.join(sWorkspace_coastline_output, 'land_ocean_mask_wo_island.geojson')
     remove_small_polygon(sFilename_naturalearth, sFilename_wo_island, dThreshold_area_island )
 
+    sFilename_wo_internal_ring = os.path.join(sWorkspace_coastline_output, 'land_ocean_mask_wo_internal_ring.geojson')
+    remove_internal_polygon(sFilename_wo_island, sFilename_wo_internal_ring)
+
     sFilename_tif_wo_island = os.path.join(sWorkspace_coastline_output, 'land_ocean_mask_wo_island.tif')
-    convert_vector_to_global_raster(sFilename_wo_island,
+    convert_vector_to_global_raster(sFilename_wo_internal_ring,
                                     sFilename_tif_wo_island,
                                     dResolution_x_in,
                                     dResolution_y_in,
@@ -41,4 +45,4 @@ def create_land_ocean_mask_from_naturalearth(sWorkspace_coastline_output,
         sFilename_tif_wo_island_buffered_fixed = os.path.join(sWorkspace_coastline_output, 'land_ocean_mask_wo_island_buffered_fixed.tif')
         fix_raster_antimeridian_issue(sFilename_tif_wo_island_buffered, sFilename_tif_wo_island_buffered_fixed, 1,2, 1)
 
-    return sFilename_tif_wo_island_buffered_fixed, sFilename_wo_island
+    return sFilename_tif_wo_island_buffered_fixed, sFilename_wo_internal_ring

@@ -7,14 +7,21 @@ from pye3sm.mesh.unstructured.e3sm_create_unstructured_domain_file_full import e
 from hexwatershed_utility.postprocess.mosart.get_geometry import get_geometry
 from pyearth.gis.geometry.calculate_polygon_area import calculate_polygon_area
 
-def convert_hexwatershed_json_to_mosart_domain_file():
-    return
-
 def convert_hexwatershed_json_to_mosart_parameter_file(sFilename_json_in,
                                                sFilename_mosart_parameter_in,
                                                sFilename_mosart_parameter_out,
                                                sFilename_mosart_domain_out,
                                                pWidth_in=None, pDepth_in=None):
+    # Resolve relative paths to absolute paths
+    if not os.path.isabs(sFilename_json_in):
+        sFilename_json_in = os.path.abspath(sFilename_json_in)
+    if not os.path.isabs(sFilename_mosart_parameter_in):
+        sFilename_mosart_parameter_in = os.path.abspath(sFilename_mosart_parameter_in)
+    if not os.path.isabs(sFilename_mosart_parameter_out):
+        sFilename_mosart_parameter_out = os.path.abspath(sFilename_mosart_parameter_out)
+    if not os.path.isabs(sFilename_mosart_domain_out):
+        sFilename_mosart_domain_out = os.path.abspath(sFilename_mosart_domain_out)
+
     # open json and read data
     aID = list()
     aDnID = list()

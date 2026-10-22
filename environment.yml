@@ -1,0 +1,18 @@
+name: earthmesh
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python>=3.10
+  - numpy
+  - gdal
+  - netcdf4
+  - shapely
+  - cartopy
+  - jigsaw
+  - jigsawpy
+  - mpas-tools
+  - pyearth
+  - pip
+  - pip:
+    - -e .[docs,dev]

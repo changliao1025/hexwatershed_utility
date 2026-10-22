@@ -2,10 +2,10 @@ import os, sys
 import numpy as np
 from osgeo import gdal, ogr, osr
 from scipy import ndimage
-from pyearth.system.define_global_variables import *
+
 
 from pyearth.toolbox.data.ocean.define_land_ocean_mask import create_land_ocean_vector_mask
-from pyearth.toolbox.conversion.convert_vector_to_geojson import convert_vector_to_geojson
+from pyearth.toolbox.conversion.convert_vector_format import convert_vector_format
 from pyearth.toolbox.conversion.convert_vector_to_global_raster import convert_vector_to_global_raster
 from pyearth.toolbox.management.vector.remove_small_polygon import remove_small_polygon
 from pyearth.gis.gdal.read.raster.gdal_read_geotiff_file import gdal_read_geotiff_file
@@ -13,7 +13,15 @@ from pyearth.toolbox.conversion.vectorize_raster import vectorize_raster
 from pyearth.gis.gdal.write.raster.gdal_write_geotiff_file import gdal_write_geotiff_file
 from pyearth.toolbox.management.vector.fields import get_field_and_value, add_field_to_vector_file
 from pyearth.toolbox.management.vector.merge_features import merge_features
-from pyearth.toolbox.geometry.create_gcs_buffer_zone import create_gcs_buffer_zone_polygon
+
+from pyearthbuffer import (
+    buffer,
+    buffer_file,
+    buffer_line_file,
+    buffer_point_file,
+    buffer_polygon_file,
+)
+
 def fill_holes(mask):
     """
     Fills holes in a binary NumPy mask and then finds its edge.
@@ -88,7 +96,7 @@ if not os.path.exists(sWorkspace_output1):
 
 #step 0, make a copy of the raw vector file in geojson format
 sFilename_geojson_na = os.path.join(sWorkspace_output1, sRegion + '_hydrobasin.geojson')
-convert_vector_to_geojson(sFilename_geojson_na_raw, sFilename_geojson_na)
+convert_vector_format(sFilename_geojson_na_raw, sFilename_geojson_na)
 
 #define target resolution, this resolution will used as the JIGSAW spacing parameter
 #for example if the resolution is 5km, then
@@ -121,7 +129,7 @@ remove_small_polygon(sFilename_geojson_na, sFilename_geojson_out, dThreshold_are
 #step 3, add a buffer to polygon using the resolution
 
 sFilename_geojson_buffer = os.path.join(sWorkspace_output, 'land_ocean_mask_wo_island_buffer_' + sResolution + '.geojson')
-create_gcs_buffer_zone_polygon(sFilename_geojson_out, sFilename_geojson_buffer,
+buffer(sFilename_geojson_out, sFilename_geojson_buffer,
                                       dBuffer_distance_in = iResolution_km* 1000)
 
 
@@ -163,7 +171,7 @@ vectorize_raster(sFilename_nohole, sFilename_vector_out, sFieldname='land', sFie
 
 #step 6: convert it to geojson and merge the features as one feature
 sFilename_vector_geojson = os.path.join(sWorkspace_output, 'land_ocean_mask_wo_island_wo_hole_' + sResolution + '.geojson')
-convert_vector_to_geojson(sFilename_vector_out, sFilename_vector_geojson)
+convert_vector_format(sFilename_vector_out, sFilename_vector_geojson)
 sFilename_vector_geojson_merged = os.path.join(sWorkspace_output, 'land_ocean_mask_wo_island_wo_hole_merged_' + sResolution + '.geojson')
 merge_features(sFilename_vector_geojson, sFilename_vector_geojson_merged)
 

@@ -17,7 +17,7 @@ from pyflowline.classes.rivergraph import pyrivergraph
 from pyflowline.classes.confluence import pyconfluence
 from pyflowline.configuration.config_manager import create_pyflowline_template_configuration_file
 from pyflowline.configuration.change_json_key_value import change_json_key_value
-from hexwatershed_utility.preprocess.features.rivers.get_outlet_location import get_outlet_location
+from hexwatershed_utility.preprocess.feature.river.get_outlet_location import get_outlet_location
 
 def convert_geometry_flowline(pGeometry_in, lFlowlineIndex, lID, lOutletID, lStream_order):
     aCoords = list()

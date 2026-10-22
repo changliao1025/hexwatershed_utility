@@ -1,9 +1,8 @@
 
 import sys
 import numpy as np
-from pyearth.gis.gdal.read.raster.gdal_read_envi_file import gdal_read_envi_file_multiple_band
 
-from hexwatershed_utility.postprocess.mosart.find_contributing_cells import build_contributing_cells_all
+from hexwatershed_utility.postprocess.river.find_contributing_cells import build_contributing_cells_all
 
 
 def get_geometry(aLongitude_in, aLatitude_in, aCellID, aCellID_downslope, aArea,
@@ -95,6 +94,7 @@ def get_geometry(aLongitude_in, aLatitude_in, aCellID, aCellID_downslope, aArea,
         print('  Nearest-neighbour mapping complete.\n')
 
         # --- 2c. Load runoff file once ---
+        from pyearth.gis.gdal.read.raster.gdal_read_envi_file import gdal_read_envi_file_multiple_band
         sWorkspace_runoff = '/compyfs/liao313/00raw'
         sFilename = sWorkspace_runoff + '/runoff.dat'
         print('Loading runoff data file...')

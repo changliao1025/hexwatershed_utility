@@ -1,4 +1,4 @@
-name: earthmesh
+name: hexwatershed_utility
 channels:
   - conda-forge
   - defaults
@@ -9,10 +9,8 @@ dependencies:
   - netcdf4
   - shapely
   - cartopy
-  - jigsaw
-  - jigsawpy
-  - mpas-tools
-  - pyearth
+  - matplotlib
+  - rtree
   - pip
   - pip:
     - -e .[docs,dev]

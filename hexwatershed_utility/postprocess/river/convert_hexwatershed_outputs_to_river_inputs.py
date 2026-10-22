@@ -4,23 +4,23 @@ import json
 import numpy as np
 import netCDF4 as nc
 from pye3sm.mesh.unstructured.e3sm_create_unstructured_domain_file_full import e3sm_create_unstructured_domain_file_full
-from hexwatershed_utility.postprocess.mosart.get_geometry import get_geometry
+from hexwatershed_utility.postprocess.river.get_geometry import get_geometry
 from pyearth.gis.geometry.calculate_polygon_area import calculate_polygon_area
 
-def convert_hexwatershed_json_to_mosart_parameter_file(sFilename_json_in,
-                                               sFilename_mosart_parameter_in,
-                                               sFilename_mosart_parameter_out,
-                                               sFilename_mosart_domain_out,
+def convert_hexwatershed_json_to_river_parameter_file(sFilename_json_in,
+                                               sFilename_river_parameter_in,
+                                               sFilename_river_parameter_out,
+                                               sFilename_river_domain_out,
                                                pWidth_in=None, pDepth_in=None):
     # Resolve relative paths to absolute paths
     if not os.path.isabs(sFilename_json_in):
         sFilename_json_in = os.path.abspath(sFilename_json_in)
-    if not os.path.isabs(sFilename_mosart_parameter_in):
-        sFilename_mosart_parameter_in = os.path.abspath(sFilename_mosart_parameter_in)
-    if not os.path.isabs(sFilename_mosart_parameter_out):
-        sFilename_mosart_parameter_out = os.path.abspath(sFilename_mosart_parameter_out)
-    if not os.path.isabs(sFilename_mosart_domain_out):
-        sFilename_mosart_domain_out = os.path.abspath(sFilename_mosart_domain_out)
+    if not os.path.isabs(sFilename_river_parameter_in):
+        sFilename_river_parameter_in = os.path.abspath(sFilename_river_parameter_in)
+    if not os.path.isabs(sFilename_river_parameter_out):
+        sFilename_river_parameter_out = os.path.abspath(sFilename_river_parameter_out)
+    if not os.path.isabs(sFilename_river_domain_out):
+        sFilename_river_domain_out = os.path.abspath(sFilename_river_domain_out)
 
     # open json and read data
     aID = list()
@@ -168,11 +168,11 @@ def convert_hexwatershed_json_to_mosart_parameter_file(sFilename_json_in,
     aTslp = aHslp
 
     # open mpas netcdf
-    pDatasets_in = nc.Dataset(sFilename_mosart_parameter_in)
+    pDatasets_in = nc.Dataset(sFilename_river_parameter_in)
     netcdf_format = pDatasets_in.file_format
     # output file
     pDatasets_out = nc.Dataset(
-        sFilename_mosart_parameter_out, "w", format=netcdf_format)
+        sFilename_river_parameter_out, "w", format=netcdf_format)
     aVariable = ['area', 'areaTotal', 'areaTotal2', 'dnID', 'domainfrac',
                  'fdir', 'frac', 'gxr', 'hslp', 'CellID', 'ID',
                  'lat', 'latixy', 'lon', 'longxy', 'nh', 'nr', 'nt',
@@ -249,16 +249,17 @@ def convert_hexwatershed_json_to_mosart_parameter_file(sFilename_json_in,
     aLatV_region.shape = (nrow, 1, nvertex)
 
     e3sm_create_unstructured_domain_file_full(aLon, aLat, aLonV_region, aLatV_region,
-                                              sFilename_mosart_domain_out, aArea_in=aArea)
+                                              sFilename_river_domain_out, aArea_in=aArea)
     # two options: simple ; non-simple
 
     # e3sm_create_unstructured_domain_file_simple(aLon, aLat,  aLonV_region, aLatV_region,
-    #                          sFilename_mosart_domain_out, aArea_in = aArea )
+    #                          sFilename_river_domain_out, aArea_in = aArea )
 
-    sFolder = os.path.dirname(sFilename_mosart_domain_out)
-    sBasename = Path(sFilename_mosart_domain_out).stem
+    sFolder = os.path.dirname(sFilename_river_domain_out)
+    sBasename = Path(sFilename_river_domain_out).stem
 
-    sFilename_mosart_domain_out = os.path.join(
-        sFolder, sFilename_mosart_domain_out)
+    sFilename_river_domain_out = os.path.join(
+        sFolder, sFilename_river_domain_out)
 
     return
+

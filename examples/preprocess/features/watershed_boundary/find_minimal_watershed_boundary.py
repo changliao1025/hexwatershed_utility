@@ -3,7 +3,7 @@ import glob
 import re
 from osgeo import gdal, ogr
 gdal.UseExceptions()
-from hexwatershed_utility.preprocess.features.watershed_boundary.find_minimal_hydrobasins_watershed_boundary import find_minimal_hydrobasins_watershed_boundary
+from hexwatershed_utility.preprocess.feature.watershed_boundary.find_minimal_hydrobasins_watershed_boundary import find_minimal_hydrobasins_watershed_boundary
 
 
 dResolution_land = 100

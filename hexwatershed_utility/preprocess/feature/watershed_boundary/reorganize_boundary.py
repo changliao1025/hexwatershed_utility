@@ -1,5 +1,4 @@
 from osgeo import gdal, ogr, osr
-from pyearth.gis.gdal.gdal_vector_format_support import get_vector_driver_from_filename
 
 def reorganize_boundary(aWkt_in, sFilename_out=None):
     """
@@ -55,6 +54,7 @@ def reorganize_boundary(aWkt_in, sFilename_out=None):
 
     if sFilename_out is not None:
         # Save to file if output filename is provided
+        from pyearth.gis.gdal.gdal_vector_format_support import get_vector_driver_from_filename
         pDriver = get_vector_driver_from_filename(sFilename_out)
         if pDriver is None:
             raise ValueError(f"Could not get driver for file: {sFilename_out}")

@@ -7,7 +7,7 @@ gdal.UseExceptions()
 from pyearth.system.define_global_variables import *
 from pyearth.gis.gdal.read.vector.gdal_get_vector_extent import gdal_get_vector_extent
 from pyearth.gis.location.get_hydrosheds_continent_from_extent import get_hydrosheds_continent_from_extent
-from hexwatershed_utility.preprocess.features.watershed_boundary.shapefile_repair_utility import open_shapefile_with_fallback, diagnose_and_fix_shapefile
+from hexwatershed_utility.preprocess.feature.watershed_boundary.shapefile_repair_utility import open_shapefile_with_fallback, diagnose_and_fix_shapefile
 
 
 

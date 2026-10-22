@@ -1,5 +1,5 @@
 import os
-from hexwatershed_utility.preprocess.features.rivers.simplify_hydrorivers_networks import simplify_hydrorivers_networks
+from hexwatershed_utility.preprocess.feature.river.simplify_hydrorivers_network import simplify_hydrorivers_network
 sFilename_flowline_hydroshed_in = '/compyfs/liao313/00raw/hydrology/hydrosheds/hydroriver/HydroRIVERS_v10_na_shp/HydroRIVERS_v10_na.shp'
 
 #global

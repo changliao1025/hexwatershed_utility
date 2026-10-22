@@ -1,4 +1,4 @@
-from hexwatershed_utility.preprocess.features.dams.snap_dams_to_river_networks import snap_dams_to_river_networks
+from hexwatershed_utility.preprocess.feature.dam.snap_dams_to_river_network import snap_dams_to_river_networks
 
 sWorkspace_data = '/compyfs/liao313/00raw/dam/GOODD_data/Data'
 

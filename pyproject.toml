@@ -3,9 +3,9 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "pyearthmesh"
-version = "0.1.1"
-description = "A lightweight mesh generation and manipulation package for Earth science applications"
+name = "hexwatershed_utility"
+version = "0.1.0"
+description = "A collection of tools for HexWatershed pre and post processing"
 readme = "README.md"
 authors = [
     {name = "Chang Liao", email = "changliao.climate@gmail.com"}
@@ -26,15 +26,19 @@ classifiers = [
     "Topic :: Scientific/Engineering :: GIS",
     "Topic :: Scientific/Engineering :: Hydrology",
 ]
-keywords = ["mesh", "GIS", "earth science", "DGGS", "hexagon", "TIN", "MPAS", "spatial analysis"]
+keywords = ["mesh", "GIS", "hydrology", "watershed", "HexWatershed", "MPAS", "E3SM", "MOSART", "ELM"]
 requires-python = ">=3.8"
 dependencies = [
     "numpy>=1.20.0",
-    "pyearth>=0.2.1",
+    "netCDF4>=1.5.0",
+    "shapely>=1.8.0",
+    "requests",
 ]
 
 [project.optional-dependencies]
 viz = [
+    "matplotlib>=3.5.0",
+    "cartopy>=0.20.0",
     "pyearthviz>=0.1.1",
 ]
 viz3d = [
@@ -53,22 +57,22 @@ docs = [
     "myst-parser>=1.0",
 ]
 all = [
-    "pyearthmesh[viz,viz3d,dev,docs]",
+    "hexwatershed_utility[viz,viz3d,dev,docs]",
 ]
 
 [project.urls]
-Homepage = "https://github.com/changliao1025/pyearthmesh"
-Documentation = "https://pyearthmesh.readthedocs.io"
-Repository = "https://github.com/changliao1025/pyearthmesh"
-Issues = "https://github.com/changliao1025/pyearthmesh/issues"
+Homepage = "https://github.com/changliao1025/hexwatershed_utility"
+Documentation = "https://hexwatershed-utility.readthedocs.io"
+Repository = "https://github.com/changliao1025/hexwatershed_utility"
+Issues = "https://github.com/changliao1025/hexwatershed_utility/issues"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["pyearthmesh*"]
+include = ["hexwatershed_utility*"]
 exclude = ["tests*", "docs*", "examples*"]
 
 [tool.setuptools.package-data]
-pyearthmesh = ["py.typed"]
+hexwatershed_utility = ["py.typed"]
 
 [tool.black]
 line-length = 100
@@ -93,7 +97,7 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-addopts = "-v --cov=pyearthmesh --cov-report=term-missing"
+addopts = "-v"
 
 [tool.mypy]
 python_version = "3.10"

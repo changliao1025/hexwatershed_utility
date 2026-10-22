@@ -8,8 +8,8 @@ from pye3sm.mesh.unstructured.e3sm_convert_unstructured_domain_file_to_scripgrid
 
 from pyearth.gis.geometry.calculate_polygon_area import calculate_polygon_area
 
-def convert_hexwatershed_json_to_elm_domain_file(sFilename_json_in,
-                                               sFilename_elm_domain_out):
+def convert_hexwatershed_json_to_land_domain_file(sFilename_json_in,
+                                                 sFilename_land_domain_out):
     aLongitude = list()
     aLatitude = list()
     aLonV_region = list()
@@ -62,9 +62,8 @@ def convert_hexwatershed_json_to_elm_domain_file(sFilename_json_in,
     aLatV_region.shape = (nrow, 1, nvertex)
 
     e3sm_create_unstructured_domain_file_full(aLongitude, aLatitude, aLonV_region, aLatV_region,
-                                              sFilename_elm_domain_out, aArea_in=aArea)
+                                              sFilename_land_domain_out, aArea_in=aArea)
 
-    e3sm_convert_unstructured_domain_file_to_scripgrid_file(sFilename_elm_domain_out, sFilename_elm_domain_out.replace('.nc', '.scripgrid.nc'))
-
+    e3sm_convert_unstructured_domain_file_to_scripgrid_file(sFilename_land_domain_out, sFilename_land_domain_out.replace('.nc', '.scripgrid.nc'))
 
     return

@@ -1,0 +1,104 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pyearthmesh"
+version = "0.1.1"
+description = "A lightweight mesh generation and manipulation package for Earth science applications"
+readme = "README.md"
+authors = [
+    {name = "Chang Liao", email = "changliao.climate@gmail.com"}
+]
+license = {text = "BSD-3-Clause"}
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: BSD License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: GIS",
+    "Topic :: Scientific/Engineering :: Hydrology",
+]
+keywords = ["mesh", "GIS", "earth science", "DGGS", "hexagon", "TIN", "MPAS", "spatial analysis"]
+requires-python = ">=3.8"
+dependencies = [
+    "numpy>=1.20.0",
+    "pyearth>=0.2.1",
+]
+
+[project.optional-dependencies]
+viz = [
+    "pyearthviz>=0.1.1",
+]
+viz3d = [
+    "pyearthviz3d>=0.1.1",
+]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "black>=23.0",
+    "flake8>=6.0",
+    "mypy>=1.0",
+]
+docs = [
+    "sphinx>=5.0",
+    "sphinx-rtd-theme>=1.0",
+    "myst-parser>=1.0",
+]
+all = [
+    "pyearthmesh[viz,viz3d,dev,docs]",
+]
+
+[project.urls]
+Homepage = "https://github.com/changliao1025/pyearthmesh"
+Documentation = "https://pyearthmesh.readthedocs.io"
+Repository = "https://github.com/changliao1025/pyearthmesh"
+Issues = "https://github.com/changliao1025/pyearthmesh/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["pyearthmesh*"]
+exclude = ["tests*", "docs*", "examples*"]
+
+[tool.setuptools.package-data]
+pyearthmesh = ["py.typed"]
+
+[tool.black]
+line-length = 100
+target-version = ["py38", "py39", "py310", "py311"]
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --cov=pyearthmesh --cov-report=term-missing"
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = false
+warn_unused_configs = true
+disallow_untyped_defs = false
+ignore_missing_imports = true
+disable_error_code = ["truthy-function", "var-annotated", "name-defined", "attr-defined", "misc"]

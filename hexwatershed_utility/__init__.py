@@ -11,6 +11,7 @@ from . import core, postprocess, preprocess
 from .core.exceptions import (
     DataInconsistencyError,
     HexWatershedError,
+    MeshFormatError,
     MeshValidationError,
     SpatialReferenceError,
     TopologicalLoopError,
@@ -21,6 +22,7 @@ __all__ = [
     "preprocess",
     "postprocess",
     "HexWatershedError",
+    "MeshFormatError",
     "MeshValidationError",
     "TopologicalLoopError",
     "DataInconsistencyError",

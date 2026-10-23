@@ -343,7 +343,6 @@ def convert_hexwatershed_json_to_river_parameter_file(
             )
             aData_variable = aData_out[i]
             pVar[:] = aData_variable
-            pVar.setncatts({"_FillValue": -9999})
             pVar.setncatts({"unit": aUnit[i]})
             pVar.setncatts({"long name": aLongName[i]})
 
@@ -357,12 +356,12 @@ def convert_hexwatershed_json_to_river_parameter_file(
         nrow = aShape[0]
         ncolumn = aShape[1]
 
-    aLon.shape = (nrow, 1)
-    aLat.shape = (nrow, 1)
+    aLon = aLon.reshape(nrow, 1)
+    aLat = aLat.reshape(nrow, 1)
 
     nrow, nvertex = aLonV_region.shape
-    aLonV_region.shape = (nrow, 1, nvertex)
-    aLatV_region.shape = (nrow, 1, nvertex)
+    aLonV_region = aLonV_region.reshape(nrow, 1, nvertex)
+    aLatV_region = aLatV_region.reshape(nrow, 1, nvertex)
 
     esm_create_unstructured_domain_file_full(
         aLon,

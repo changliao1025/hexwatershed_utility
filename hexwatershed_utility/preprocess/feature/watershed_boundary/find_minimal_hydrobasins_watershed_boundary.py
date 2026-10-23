@@ -1,7 +1,7 @@
 import glob
 import logging
 import os
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from osgeo import ogr
 from pyearth.gis.gdal.read.vector.gdal_get_vector_extent import gdal_get_vector_extent

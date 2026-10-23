@@ -1,3 +1,4 @@
+import os
 import sys
 
 import numpy as np
@@ -17,6 +18,7 @@ def get_geometry(
     pDepth_in=None,
     iFlag_read_runoff=0,
     nChunk_size=1000,
+    sFilename_runoff=None,
 ):
     """
     Retrieve river width, depth and 2-year flood discharge for each mesh cell.
@@ -56,9 +58,7 @@ def get_geometry(
     # ------------------------------------------------------------------
     print("Building contributing-cell lists (O(N) topological sort)...")
     sys.stdout.flush()
-    aCellIndex_contribution_all = build_contributing_cells_all(
-        aCellID, aCellID_downslope
-    )
+    aCellIndex_contribution_all = build_contributing_cells_all(aCellID, aCellID_downslope)
     print(f"  Done. {nCell} cells processed.\n")
 
     # ------------------------------------------------------------------
@@ -112,9 +112,14 @@ def get_geometry(
             gdal_read_envi_file_multiple_band,
         )
 
-        sWorkspace_runoff = "/compyfs/liao313/00raw"
-        sFilename = sWorkspace_runoff + "/runoff.dat"
-        print("Loading runoff data file...")
+        if sFilename_runoff is None:
+            sFilename_runoff = "/compyfs/liao313/00raw/runoff.dat"
+
+        if not os.path.exists(sFilename_runoff):
+            raise FileNotFoundError(f"Runoff data file not found: {sFilename_runoff}")
+
+        sFilename = sFilename_runoff
+        print(f"Loading runoff data file: {sFilename}...")
         sys.stdout.flush()
         dummy0 = gdal_read_envi_file_multiple_band(sFilename)
         aRunoff_source = dummy0[0]  # shape: (nday, nrow, ncol)

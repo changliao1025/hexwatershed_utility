@@ -1,7 +1,5 @@
 import os
-import sys
 
-import numpy as np
 from osgeo import ogr, osr
 from pyearth.gis.gdal.gdal_vector_format_support import get_vector_driver_from_filename
 from pyflowline.classes.vertex import pyvertex
@@ -13,12 +11,10 @@ def snap_dams_to_river_networks(
     sFilename_dam, sFilename_river, sFilename_out, sVariable_drainage="drainage"
 ):
     if not os.path.exists(sFilename_dam):
-        print("dam location file does not exist")
-        sys.exit()
+        raise FileNotFoundError(f"Dam location file does not exist: {sFilename_dam}")
 
     if not os.path.exists(sFilename_river):
-        print("river network does not exist")
-        sys.exit()
+        raise FileNotFoundError(f"River network file does not exist: {sFilename_river}")
 
     pDataSource_dam = ogr.Open(sFilename_dam, 0)
     pLayer_dam = pDataSource_dam.GetLayer()
@@ -53,24 +49,16 @@ def snap_dams_to_river_networks(
     pLayer_on = pDataSource_on.CreateLayer("dam", pSpatialReference, ogr.wkbPoint)
 
     pDataSource_snapped = pDriver.CreateDataSource(sFilename_snapped)
-    pLayer_snapped = pDataSource_snapped.CreateLayer(
-        "dam", pSpatialReference, ogr.wkbPoint
-    )
+    pLayer_snapped = pDataSource_snapped.CreateLayer("dam", pSpatialReference, ogr.wkbPoint)
 
     pDataSource_no_river = pDriver.CreateDataSource(sFilename_no_river)
-    pLayer_no_river = pDataSource_no_river.CreateLayer(
-        "dam", pSpatialReference, ogr.wkbPoint
-    )
+    pLayer_no_river = pDataSource_no_river.CreateLayer("dam", pSpatialReference, ogr.wkbPoint)
 
     pDataSource_too_far = pDriver.CreateDataSource(sFilename_too_far)
-    pLayer_too_far = pDataSource_too_far.CreateLayer(
-        "dam", pSpatialReference, ogr.wkbPoint
-    )
+    pLayer_too_far = pDataSource_too_far.CreateLayer("dam", pSpatialReference, ogr.wkbPoint)
 
     pDataSource_merged = pDriver.CreateDataSource(sFilename_merged)
-    pLayer_merged = pDataSource_merged.CreateLayer(
-        "dam", pSpatialReference, ogr.wkbPoint
-    )
+    pLayer_merged = pDataSource_merged.CreateLayer("dam", pSpatialReference, ogr.wkbPoint)
 
     # Create fields for all three layers
     for pLayer in [
@@ -173,12 +161,8 @@ def snap_dams_to_river_networks(
                     pFeature_out = ogr.Feature(pLayerDefn_on)
                     pFeature_out.SetGeometry(pPoint)
                     pFeature_out.SetField("id", iDam_on)
-                    pFeature_out.SetField(
-                        "dLongitude_degree", pVertex_closest.dLongitude_degree
-                    )
-                    pFeature_out.SetField(
-                        "dLatitude_degree", pVertex_closest.dLatitude_degree
-                    )
+                    pFeature_out.SetField("dLongitude_degree", pVertex_closest.dLongitude_degree)
+                    pFeature_out.SetField("dLatitude_degree", pVertex_closest.dLatitude_degree)
                     pFeature_out.SetField("drainage", dDrainage)
                     pLayer_on.CreateFeature(pFeature_out)
                     iDam_on = iDam_on + 1
@@ -193,12 +177,8 @@ def snap_dams_to_river_networks(
                     pFeature_out = ogr.Feature(pLayerDefn_snapped)
                     pFeature_out.SetGeometry(pPoint)
                     pFeature_out.SetField("id", iDam_snapped)
-                    pFeature_out.SetField(
-                        "dLongitude_degree", pVertex_closest.dLongitude_degree
-                    )
-                    pFeature_out.SetField(
-                        "dLatitude_degree", pVertex_closest.dLatitude_degree
-                    )
+                    pFeature_out.SetField("dLongitude_degree", pVertex_closest.dLongitude_degree)
+                    pFeature_out.SetField("dLatitude_degree", pVertex_closest.dLatitude_degree)
                     pFeature_out.SetField("drainage", dDrainage)
                     pLayer_snapped.CreateFeature(pFeature_out)
                     iDam_snapped = iDam_snapped + 1
@@ -206,18 +186,12 @@ def snap_dams_to_river_networks(
 
                 # merge as well
                 pPoint = ogr.Geometry(ogr.wkbPoint)
-                pPoint.AddPoint(
-                    pVertex_closest.dLongitude_degree, pVertex_closest.dLatitude_degree
-                )
+                pPoint.AddPoint(pVertex_closest.dLongitude_degree, pVertex_closest.dLatitude_degree)
                 pFeature_out = ogr.Feature(pLayerDefn_merged)
                 pFeature_out.SetGeometry(pPoint)
                 pFeature_out.SetField("id", i + 1)
-                pFeature_out.SetField(
-                    "dLongitude_degree", pVertex_closest.dLongitude_degree
-                )
-                pFeature_out.SetField(
-                    "dLatitude_degree", pVertex_closest.dLatitude_degree
-                )
+                pFeature_out.SetField("dLongitude_degree", pVertex_closest.dLongitude_degree)
+                pFeature_out.SetField("dLatitude_degree", pVertex_closest.dLatitude_degree)
                 pFeature_out.SetField("drainage", dDrainage)
                 pLayer_merged.CreateFeature(pFeature_out)
 
@@ -249,5 +223,9 @@ def snap_dams_to_river_networks(
     print(f"  Total dams processed: {nDam}")
     print(f"  Already on river network (<10m): {nCount_on} -> {sFilename_on}")
     print(f"  Successfully snapped (< 3km): {nCount_snapped} -> {sFilename_snapped}")
-    print(f"  No river nearby: {nCount_no_river} -> {sFilename_no_river}")
-    print(f"  Too far from river (>= 3km): {nCount_too_far} -> {sFilename_too_far}")
+    return {
+        "on": sFilename_on,
+        "snapped": sFilename_snapped,
+        "no_river": sFilename_no_river,
+        "too_far": sFilename_too_far,
+    }

@@ -1,10 +1,6 @@
-import glob
 import os
 
-from osgeo import gdal, ogr
-
-gdal.UseExceptions()
-
+from osgeo import gdal
 from pyearth.toolbox.analysis.image.raster_process import (
     create_raster_buffer_zone,
     fix_raster_antimeridian_issue,
@@ -15,12 +11,8 @@ from pyearth.toolbox.conversion.convert_vector_to_global_raster import (
 from pyearth.toolbox.data.ocean.define_land_ocean_mask import (
     create_land_ocean_vector_mask_naturalearth,
 )
-from pyearth.toolbox.management.vector.merge_features import merge_features
-from pyearth.toolbox.management.vector.remove_internal_polygon import (
-    remove_internal_polygon,
-)
+from pyearth.toolbox.management.vector.remove_internal_polygon import remove_internal_polygon
 from pyearth.toolbox.management.vector.remove_small_polygon import remove_small_polygon
-from pyearthbuffer.utility.create_gcs_buffer_zone import create_buffer_zone_polygon_file
 
 
 def create_land_ocean_mask_from_naturalearth(
@@ -31,6 +23,7 @@ def create_land_ocean_mask_from_naturalearth(
     dResolution_coastline_buffer,
     iRaster_buffer_pixel=1,
 ):
+    gdal.UseExceptions()
 
     sFilename_naturalearth = os.path.join(
         sWorkspace_coastline_output, "land_ocean_mask_naturalearth.geojson"
@@ -40,9 +33,7 @@ def create_land_ocean_mask_from_naturalearth(
     sFilename_wo_island = os.path.join(
         sWorkspace_coastline_output, "land_ocean_mask_wo_island.geojson"
     )
-    remove_small_polygon(
-        sFilename_naturalearth, sFilename_wo_island, dThreshold_area_island
-    )
+    remove_small_polygon(sFilename_naturalearth, sFilename_wo_island, dThreshold_area_island)
 
     sFilename_wo_internal_ring = os.path.join(
         sWorkspace_coastline_output, "land_ocean_mask_wo_internal_ring.geojson"
@@ -87,7 +78,7 @@ def create_land_ocean_mask_from_naturalearth(
             sWorkspace_coastline_output, "land_ocean_mask_wo_island_buffered_fixed.tif"
         )
         fix_raster_antimeridian_issue(
-            sFilename_tif_wo_island_buffered,
+            sFilename_tif_wo_island,
             sFilename_tif_wo_island_buffered_fixed,
             1,
             2,

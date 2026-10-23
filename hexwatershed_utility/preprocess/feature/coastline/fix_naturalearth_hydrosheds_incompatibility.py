@@ -1,23 +1,19 @@
 import os
 
 from osgeo import gdal, ogr
-
-gdal.UseExceptions()
-import importlib.util
-
-iFlag_cython = importlib.util.find_spec("cython")
-if iFlag_cython is not None:
-    from rtree.index import Index as RTreeindex
-
-    iFlag_use_rtree = 1
-else:
-    iFlag_use_rtree = 0
-
 from pyearth.gis.geometry.calculate_distance_based_on_longitude_latitude import (
     calculate_distance_based_on_longitude_latitude,
 )
 from pyearth.toolbox.management.vector.merge_features import merge_features
 from pyearthbuffer.utility.create_gcs_buffer_zone import create_polyline_buffer_zone
+
+try:
+    from rtree.index import Index as RTreeindex
+
+    iFlag_use_rtree = 1
+except ImportError:
+    RTreeindex = None
+    iFlag_use_rtree = 0
 
 
 def geometries_bbox_overlap(bbox1, bbox2, tolerance=1e-10):
@@ -53,19 +49,19 @@ def fix_naturalearth_hydrosheds_incompatibility(
         aFilename_hydrosheds_flowline: List of HydroSHEDS flowline file paths
         sFilename_vector_naturalearth: Path to Natural Earth land polygon file
         sFilename_vector_naturalearth_updated: Path for the updated Natural Earth file
+        dBuffer_distance: Buffer distance in meters (default: 1000.0)
 
     Returns:
-        sFilename_vector_naturalearth_updated: Path to the updated file
+        sFilename_vector_naturalearth_updated: Path to the updated file, or None if error occurs
     """
+    gdal.UseExceptions()
 
     nFlowline = len(aFilename_hydrosheds_flowline)
 
     # Open the Natural Earth land polygon dataset
     pDataset_naturalearth = ogr.Open(sFilename_vector_naturalearth)
     if pDataset_naturalearth is None:
-        print(
-            f"Error: Could not open Natural Earth file {sFilename_vector_naturalearth}"
-        )
+        print(f"Error: Could not open Natural Earth file {sFilename_vector_naturalearth}")
         return None
 
     pLayer_naturalearth = pDataset_naturalearth.GetLayer(0)
@@ -85,9 +81,7 @@ def fix_naturalearth_hydrosheds_incompatibility(
         print("Using RTree for spatial indexing")
         land_spatial_index = RTreeindex()
     else:
-        print(
-            "Using dictionary-based spatial indexing (install tinyr for better performance)"
-        )
+        print("Using dictionary-based spatial indexing (install tinyr for better performance)")
         land_spatial_index = {}
 
     # Index all land polygons
@@ -140,9 +134,7 @@ def fix_naturalearth_hydrosheds_incompatibility(
                 continue
 
             # Get flowline bounding box for spatial query
-            flowline_envelope = (
-                pGeometry_flowline.GetEnvelope()
-            )  # (minX, maxX, minY, maxY)
+            flowline_envelope = pGeometry_flowline.GetEnvelope()  # (minX, maxX, minY, maxY)
 
             # Find candidate land polygons using spatial index
             candidate_indices = []
@@ -202,22 +194,15 @@ def fix_naturalearth_hydrosheds_incompatibility(
                                 point_end[0],
                                 point_end[1],
                             )
-                            sWkt_buffer_polygon = create_polyline_buffer_zone(
-                                sWkt, distance / 2.0
-                            )
+                            sWkt_buffer_polygon = create_polyline_buffer_zone(sWkt, distance / 2.0)
                             # create a geometry from the buffer wkt
-                            pBuffer_geometry = ogr.CreateGeometryFromWkt(
-                                sWkt_buffer_polygon
-                            )
+                            pBuffer_geometry = ogr.CreateGeometryFromWkt(sWkt_buffer_polygon)
                             aBuffer_geometries.append(pBuffer_geometry)
                         else:
                             if sGeometry_type == "MULTILINESTRING":
                                 for i in range(outside_flowline.GetGeometryCount()):
                                     outside_part_i = outside_flowline.GetGeometryRef(i)
-                                    if (
-                                        outside_part_i is None
-                                        or outside_part_i.IsEmpty()
-                                    ):
+                                    if outside_part_i is None or outside_part_i.IsEmpty():
                                         continue
                                     nOutside_count += 1
                                     sWkt = outside_part_i.ExportToWkt()
@@ -225,13 +210,11 @@ def fix_naturalearth_hydrosheds_incompatibility(
                                     point_end = outside_part_i.GetPoint(
                                         outside_part_i.GetPointCount() - 1
                                     )
-                                    distance = (
-                                        calculate_distance_based_on_longitude_latitude(
-                                            point_start[0],
-                                            point_start[1],
-                                            point_end[0],
-                                            point_end[1],
-                                        )
+                                    distance = calculate_distance_based_on_longitude_latitude(
+                                        point_start[0],
+                                        point_start[1],
+                                        point_end[0],
+                                        point_end[1],
                                     )
                                     # calculate the length of the outside_part to determine the buffer distance
                                     sWkt_buffer_polygon = create_polyline_buffer_zone(
@@ -309,9 +292,7 @@ def fix_naturalearth_hydrosheds_incompatibility(
 
     # Add buffer geometries as new features
     if aBuffer_geometries:
-        print(
-            f"Adding {len(aBuffer_geometries)} buffer zones for flowlines outside land"
-        )
+        print(f"Adding {len(aBuffer_geometries)} buffer zones for flowlines outside land")
         for pBuffer_geom in aBuffer_geometries:
             if pBuffer_geom is None or pBuffer_geom.IsEmpty():
                 continue
@@ -326,15 +307,11 @@ def fix_naturalearth_hydrosheds_incompatibility(
     pDataset_output = None
     pDataset_naturalearth = None
 
-    merge_features(
-        sFilename_vector_naturalearth_tmp, sFilename_vector_naturalearth_updated
-    )
+    merge_features(sFilename_vector_naturalearth_tmp, sFilename_vector_naturalearth_updated)
 
     print(
         f"Successfully created updated Natural Earth file: {sFilename_vector_naturalearth_updated}"
     )
-    print(
-        f"Added {len(aBuffer_geometries)} buffer zones for rivers outside original land polygons"
-    )
+    print(f"Added {len(aBuffer_geometries)} buffer zones for rivers outside original land polygons")
 
     return

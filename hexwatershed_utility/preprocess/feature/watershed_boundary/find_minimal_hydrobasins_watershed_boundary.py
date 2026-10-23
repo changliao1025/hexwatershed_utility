@@ -1,21 +1,16 @@
 import glob
+import logging
 import os
-from contextlib import contextmanager
-from typing import Any, Dict, List, Optional, Union
+from typing import List, Optional
 
-from osgeo import gdal, ogr
-
-gdal.UseExceptions()
+from osgeo import ogr
 from pyearth.gis.gdal.read.vector.gdal_get_vector_extent import gdal_get_vector_extent
 from pyearth.gis.location.get_hydrosheds_continent_from_extent import (
     get_hydrosheds_continent_from_extent,
 )
 from pyearth.system.define_global_variables import *
 
-from hexwatershed_utility.preprocess.feature.watershed_boundary.shapefile_repair_utility import (
-    diagnose_and_fix_shapefile,
-    open_shapefile_with_fallback,
-)
+logger = logging.getLogger(__name__)
 
 
 def _find_containing_watershed(
@@ -35,9 +30,7 @@ def _find_containing_watershed(
         # Use the shapefile repair utility to handle corrupted files
         pDataset_watershed = ogr.Open(sFilename_watershed, 0)
         if pDataset_watershed is None:
-            print(
-                f"Could not open watershed file even with repair attempts: {sFilename_watershed}"
-            )
+            print(f"Could not open watershed file even with repair attempts: {sFilename_watershed}")
             return None
 
         pLayer_watershed = pDataset_watershed.GetLayer(0)
@@ -77,9 +70,7 @@ def _find_containing_watershed(
             # Check intersection (less restrictive - causes skip to next level)
             try:
                 if pGeometry_watershed.Intersects(pGeometry_network):
-                    print(
-                        f"River network intersects with watershed, skipping to next level"
-                    )
+                    print(f"River network intersects with watershed, skipping to next level")
                     pDataset_watershed = None
                     return "INTERSECTS"  # Special flag to indicate intersection
             except Exception as e:
@@ -87,29 +78,11 @@ def _find_containing_watershed(
                 continue
 
         pDataset_watershed = None
+        return None
 
     except Exception as e:
-        error_msg = str(e)
-        print(f"Error processing watershed file {sFilename_watershed}: {error_msg}")
-
-        # Check if this is the specific "Inconsistent shape count for bin" error
-        if "Inconsistent shape count for bin" in error_msg:
-            print("Detected shapefile corruption. Attempting diagnosis and repair...")
-            success, message = diagnose_and_fix_shapefile(sFilename_watershed)
-            if success:
-                print(f"Repair successful: {message}")
-                print("Retrying with repaired shapefile...")
-                # Retry the operation once after repair
-                try:
-                    return _find_containing_watershed(
-                        pGeometry_network, sFilename_watershed
-                    )
-                except Exception as retry_e:
-                    print(f"Retry failed even after repair: {retry_e}")
-            else:
-                print(f"Repair failed: {message}")
-
-    return None
+        logger.error("Error processing watershed file %s: %s", sFilename_watershed, e)
+        return None
 
 
 def _get_watershed_shapefiles(sFolder: str, iLevel: int) -> List[str]:
@@ -218,21 +191,15 @@ def find_minimal_hydrobasins_watershed_boundary(
             pDataset_network = ogr.Open(sFilename_river_network_in, 0)
 
             if pDataset_network is None:
-                print(
-                    f"Could not open river network file: {sFilename_river_network_in}"
-                )
+                print(f"Could not open river network file: {sFilename_river_network_in}")
                 return None
             pLayer_network = pDataset_network.GetLayer(0)
             if pLayer_network is None:
-                print(
-                    f"Could not get layer from river network file: {sFilename_river_network_in}"
-                )
+                print(f"Could not get layer from river network file: {sFilename_river_network_in}")
                 return None
             nSubbasin = pLayer_network.GetFeatureCount()
             if nSubbasin == 0:
-                print(
-                    f"No features found in river network file: {sFilename_river_network_in}"
-                )
+                print(f"No features found in river network file: {sFilename_river_network_in}")
                 return None
             pLayer_network.ResetReading()
             for pFeature_network in pLayer_network:
@@ -248,9 +215,7 @@ def find_minimal_hydrobasins_watershed_boundary(
                 )
                 if sWkt and sWkt != "INTERSECTS":
                     aWatershed_boundaries.append(sWkt)
-                    print(
-                        f"Watershed boundary for subbasin {pFeature_network.GetFID()} found"
-                    )
+                    print(f"Watershed boundary for subbasin {pFeature_network.GetFID()} found")
 
         except Exception as e:
             print(f"Error processing nested features: {e}")
@@ -265,9 +230,7 @@ def find_minimal_hydrobasins_watershed_boundary(
             return aWatershed_boundaries
     else:
         # Process union geometry of all features
-        sWkt = _find_watershed_for_geometry(
-            pGeometry_network, sFolder, iLevel_start, iLevel_end
-        )
+        sWkt = _find_watershed_for_geometry(pGeometry_network, sFolder, iLevel_start, iLevel_end)
         if sWkt and sWkt != "INTERSECTS":
             return sWkt
 

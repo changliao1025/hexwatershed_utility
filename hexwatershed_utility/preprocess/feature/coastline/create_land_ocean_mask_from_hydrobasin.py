@@ -2,9 +2,6 @@ import glob
 import os
 
 from osgeo import gdal, ogr
-
-gdal.UseExceptions()
-
 from pyearth.toolbox.conversion.convert_vector_to_global_raster import (
     convert_vector_to_global_raster,
 )
@@ -22,6 +19,7 @@ def create_land_ocean_mask_from_hydrobasin(
     dThreshold_area_island,
     dResolution_coastline_buffer,
 ):
+    gdal.UseExceptions()
 
     pDriver_shapefile = ogr.GetDriverByName("ESRI Shapefile")
     if pDriver_shapefile is None:
@@ -56,9 +54,7 @@ def create_land_ocean_mask_from_hydrobasin(
         aWatershed_boundary.append(sFilename_full)
 
     # Merge all the geojson files into a single file
-    sFilename_merge = os.path.join(
-        sWorkspace_coastline_output, "hybas_lake_all_lev03.parquet"
-    )
+    sFilename_merge = os.path.join(sWorkspace_coastline_output, "hybas_lake_all_lev03.parquet")
     merge_vector_files(aWatershed_boundary, sFilename_merge, sFormat="Parquet")
 
     sFilename_wo_island = os.path.join(

@@ -1,13 +1,10 @@
 import logging
 import os
-import sys
 
 import numpy as np
-from osgeo import gdal, ogr
+from osgeo import ogr
 from pyearth.gis.gdal.read.raster.gdal_read_geotiff_file import gdal_read_geotiff_file
-from pyearth.gis.gdal.write.raster.gdal_write_geotiff_file import (
-    gdal_write_geotiff_file,
-)
+from pyearth.gis.gdal.write.raster.gdal_write_geotiff_file import gdal_write_geotiff_file
 
 logger = logging.getLogger(__name__)
 
@@ -50,9 +47,7 @@ def tag_river_outlet(
             f"Input flowline file not found: {sFilename_flowline_hydrosheds_in}"
         )
     if not os.path.isfile(sFilename_river_network_raster_in):
-        raise FileNotFoundError(
-            f"Input raster file not found: {sFilename_river_network_raster_in}"
-        )
+        raise FileNotFoundError(f"Input raster file not found: {sFilename_river_network_raster_in}")
 
     # remove output file if it exists
     if os.path.isfile(sFilename_river_network_raster_mouth_tagged):
@@ -61,9 +56,7 @@ def tag_river_outlet(
     # read input river network vector
     pDataset_vector = ogr.Open(sFilename_flowline_hydrosheds_in, 0)
     if pDataset_vector is None:
-        raise RuntimeError(
-            f"Failed to open vector file: {sFilename_flowline_hydrosheds_in}"
-        )
+        raise RuntimeError(f"Failed to open vector file: {sFilename_flowline_hydrosheds_in}")
     pLayer_vector = pDataset_vector.GetLayer(0)
     if pLayer_vector is None:
         raise RuntimeError(
@@ -120,6 +113,9 @@ def tag_river_outlet(
         datatype=dataType,
     )
 
-    print(
-        f"Tagged river outlet raster written to: {sFilename_river_network_raster_mouth_tagged}"
+    pDataset_vector = None
+    logger.info(
+        "Tagged river outlet raster written to: %s",
+        sFilename_river_network_raster_mouth_tagged,
     )
+    return sFilename_river_network_raster_mouth_tagged

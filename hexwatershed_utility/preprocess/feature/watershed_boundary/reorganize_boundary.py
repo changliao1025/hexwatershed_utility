@@ -1,4 +1,4 @@
-from osgeo import gdal, ogr, osr
+from osgeo import ogr, osr
 
 
 def reorganize_boundary(aWkt_in, sFilename_out=None):
@@ -55,9 +55,7 @@ def reorganize_boundary(aWkt_in, sFilename_out=None):
 
     if sFilename_out is not None:
         # Save to file if output filename is provided
-        from pyearth.gis.gdal.gdal_vector_format_support import (
-            get_vector_driver_from_filename,
-        )
+        from pyearth.gis.gdal.gdal_vector_format_support import get_vector_driver_from_filename
 
         pDriver = get_vector_driver_from_filename(sFilename_out)
         if pDriver is None:
@@ -71,9 +69,7 @@ def reorganize_boundary(aWkt_in, sFilename_out=None):
             "watershed_boundary", geom_type=ogr.wkbMultiPolygon, srs=oSRS
         )
         if pLayer_out is None:
-            raise ValueError(
-                f"Could not create layer in output dataset: {sFilename_out}"
-            )
+            raise ValueError(f"Could not create layer in output dataset: {sFilename_out}")
 
         pFeature_out = ogr.Feature(pLayer_out.GetLayerDefn())
         pGeometry_out = ogr.CreateGeometryFromWkt(sWkt_out)
@@ -82,9 +78,7 @@ def reorganize_boundary(aWkt_in, sFilename_out=None):
 
         pFeature_out.SetGeometry(pGeometry_out)
         if pLayer_out.CreateFeature(pFeature_out) != ogr.OGRERR_NONE:
-            raise ValueError(
-                f"Could not create feature in output layer: {sFilename_out}"
-            )
+            raise ValueError(f"Could not create feature in output layer: {sFilename_out}")
 
         # Clean up
         pFeature_out = None
@@ -115,24 +109,40 @@ def _extract_minimal_polygons(aPolygons):
             continue
 
         bIsDuplicate = False
+        env_curr = oCurrentPoly.GetEnvelope()
+        area_curr = oCurrentPoly.GetArea()
 
-        # Check if this polygon is a duplicate of any already processed polygon
+        # Check if this polygon is a duplicate using fast envelope/area pre-filters
         for oUniquePoly in aUniquePolygons:
+            env_u = oUniquePoly.GetEnvelope()
+            # Fast envelope rejection
+            if (
+                abs(env_curr[0] - env_u[0]) > 1e-7
+                or abs(env_curr[1] - env_u[1]) > 1e-7
+                or abs(env_curr[2] - env_u[2]) > 1e-7
+                or abs(env_curr[3] - env_u[3]) > 1e-7
+            ):
+                continue
+
+            # Fast area rejection
+            area_u = oUniquePoly.GetArea()
+            if abs(area_curr - area_u) > 1e-7:
+                continue
+
             try:
                 # Check if polygons are geometrically equal
                 if oCurrentPoly.Equals(oUniquePoly):
                     bIsDuplicate = True
                     break
 
-                # Also check if they have the same area and centroid (for numerical precision issues)
-                if abs(
-                    oCurrentPoly.GetArea() - oUniquePoly.GetArea()
-                ) < 1e-10 and oCurrentPoly.Centroid().Equals(oUniquePoly.Centroid()):
+                # Centroid check for numerical precision issues
+                c1 = oCurrentPoly.Centroid()
+                c2 = oUniquePoly.Centroid()
+                if abs(c1.GetX() - c2.GetX()) < 1e-7 and abs(c1.GetY() - c2.GetY()) < 1e-7:
                     bIsDuplicate = True
                     break
 
             except Exception as e:
-                print(f"Error comparing polygons: {e}")
                 continue
 
         # Add polygon if it's not a duplicate

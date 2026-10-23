@@ -7,7 +7,6 @@ Converted from MATLAB to Python.
 """
 
 import shutil
-from pathlib import Path
 from typing import Optional, Tuple
 
 import netCDF4 as nc
@@ -68,9 +67,7 @@ def create_bifurc_netcdf(
     # Create arrays with downstream dimension
     if is_structured:
         # Structured: Create 3D arrays
-        dnID_2d_expand_to_3d = -9999 * np.ones(
-            (nrow, ncol, max_downstream), dtype=np.int32
-        )
+        dnID_2d_expand_to_3d = -9999 * np.ones((nrow, ncol, max_downstream), dtype=np.int32)
         bifurc_ratio_3d = np.zeros((nrow, ncol, max_downstream), dtype=np.float64)
         ibt_demand_3d = np.zeros((nrow, ncol, max_downstream), dtype=np.float64)
 
@@ -107,15 +104,11 @@ def create_bifurc_netcdf(
             ds.renameVariable("dnID", "dnID_original")
 
             # Create new 3D variables: dnID(lon, lat, downstream)
-            dnID_new = ds.createVariable(
-                "dnID", dnID_dtype, (lon_dim, lat_dim, "downstream")
-            )
+            dnID_new = ds.createVariable("dnID", dnID_dtype, (lon_dim, lat_dim, "downstream"))
             bifurc_ratio_var = ds.createVariable(
                 "bifurc_ratio", "f8", (lon_dim, lat_dim, "downstream")
             )
-            ibt_demand_var = ds.createVariable(
-                "ibt_demand", "f8", (lon_dim, lat_dim, "downstream")
-            )
+            ibt_demand_var = ds.createVariable("ibt_demand", "f8", (lon_dim, lat_dim, "downstream"))
 
             # Add variable attributes
             bifurc_ratio_var.long_name = "Bifurcation split ratios"
@@ -135,12 +128,8 @@ def create_bifurc_netcdf(
 
             # Create new 2D variables: dnID(cells, downstream)
             dnID_new = ds.createVariable("dnID", dnID_dtype, (cells_dim, "downstream"))
-            bifurc_ratio_var = ds.createVariable(
-                "bifurc_ratio", "f8", (cells_dim, "downstream")
-            )
-            ibt_demand_var = ds.createVariable(
-                "ibt_demand", "f8", (cells_dim, "downstream")
-            )
+            bifurc_ratio_var = ds.createVariable("bifurc_ratio", "f8", (cells_dim, "downstream"))
+            ibt_demand_var = ds.createVariable("ibt_demand", "f8", (cells_dim, "downstream"))
 
             # Add variable attributes
             bifurc_ratio_var.long_name = "Bifurcation split ratios"
@@ -211,10 +200,7 @@ def create_bifurc_netcdf(
             cell_ids[i] = split_cell_id
 
             # Handle primary downstream cell
-            if (
-                bif.iloc[i]["dncell1_lat"] != -9999
-                and bif.iloc[i]["dncell1_long"] != -9999
-            ):
+            if bif.iloc[i]["dncell1_lat"] != -9999 and bif.iloc[i]["dncell1_long"] != -9999:
                 # Custom primary downstream specified
                 dn1_lat = bif.iloc[i]["dncell1_lat"]
                 dn1_lon = bif.iloc[i]["dncell1_long"]
@@ -234,18 +220,14 @@ def create_bifurc_netcdf(
 
                 # Update primary downstream in arrays
                 if is_structured:
-                    split_row, split_col = get_structured_indices(
-                        split_cell_idx, nrow, ncol
-                    )
+                    split_row, split_col = get_structured_indices(split_cell_idx, nrow, ncol)
                     dnID_2d_expand_to_3d[split_row, split_col, 0] = dn1_cell_id
                 else:
                     dnID_1d_expand_to_2d[split_cell_idx, 0] = dn1_cell_id
             else:
                 # Use existing primary downstream
                 if is_structured:
-                    split_row, split_col = get_structured_indices(
-                        split_cell_idx, nrow, ncol
-                    )
+                    split_row, split_col = get_structured_indices(split_cell_idx, nrow, ncol)
                     existing_dnID = dnID_2d_expand_to_3d[split_row, split_col, 0]
                 else:
                     existing_dnID = dnID_1d_expand_to_2d[split_cell_idx, 0]
@@ -272,16 +254,12 @@ def create_bifurc_netcdf(
 
             # Set secondary downstream connection and ratios/demands
             if is_structured:
-                split_row, split_col = get_structured_indices(
-                    split_cell_idx, nrow, ncol
-                )
+                split_row, split_col = get_structured_indices(split_cell_idx, nrow, ncol)
                 dnID_2d_expand_to_3d[split_row, split_col, 1] = dn2_cell_id
 
                 if is_ibt == 1:
                     # IBT mode: use demand values
-                    ibt_demand_3d[split_row, split_col, 0] = (
-                        0.0  # Primary gets remainder
-                    )
+                    ibt_demand_3d[split_row, split_col, 0] = 0.0  # Primary gets remainder
                     demand2_val = bif.iloc[i]["demand2"]
                     if demand2_val == -9999:
                         demand2_val = 0.0  # Treat missing as 0
@@ -299,9 +277,7 @@ def create_bifurc_netcdf(
 
                     # Validate ratios
                     if ratio1 + ratio2 > 1.0001:  # Allow small floating point tolerance
-                        raise ValueError(
-                            f"Ratios sum to {ratio1 + ratio2:.4f} > 1.0 for row {i}"
-                        )
+                        raise ValueError(f"Ratios sum to {ratio1 + ratio2:.4f} > 1.0 for row {i}")
 
                     bifurc_ratio_3d[split_row, split_col, 0] = ratio1
                     bifurc_ratio_3d[split_row, split_col, 1] = ratio2
@@ -329,9 +305,7 @@ def create_bifurc_netcdf(
 
                     # Validate ratios
                     if ratio1 + ratio2 > 1.0001:  # Allow small floating point tolerance
-                        raise ValueError(
-                            f"Ratios sum to {ratio1 + ratio2:.4f} > 1.0 for row {i}"
-                        )
+                        raise ValueError(f"Ratios sum to {ratio1 + ratio2:.4f} > 1.0 for row {i}")
 
                     bifurc_ratio_2d[split_cell_idx, 0] = ratio1
                     bifurc_ratio_2d[split_cell_idx, 1] = ratio2
@@ -402,32 +376,20 @@ def find_closest_cell(
     cell_id = -1
 
     if is_structured:
-        # For structured mesh, search through 2D arrays
+        # Vectorized Euclidean approximation on 2D structured grids
         nrow, ncol = lat_array.shape
-        for i in range(nrow):
-            for j in range(ncol):
-                # Calculate distance using simple Euclidean approximation
-                lat_diff = lat_array[i, j] - target_lat
-                lon_diff = lon_array[i, j] - target_lon
-                distance = np.sqrt(lat_diff**2 + lon_diff**2)
-
-                if distance < min_distance:
-                    min_distance = distance
-                    cell_idx = i * ncol + j  # Convert to 1D index
-                    cell_id = int(ID_array[i, j])
+        dist_sq = (lat_array - target_lat) ** 2 + (lon_array - target_lon) ** 2
+        min_pos = np.unravel_index(np.argmin(dist_sq), dist_sq.shape)
+        cell_idx = int(min_pos[0] * ncol + min_pos[1])
+        cell_id = int(ID_array[min_pos])
+        min_distance = float(np.sqrt(dist_sq[min_pos]))
     else:
-        # For unstructured mesh, search through 1D arrays
-        ncells = len(lat_array)
-        for i in range(ncells):
-            # Calculate distance
-            lat_diff = lat_array[i] - target_lat
-            lon_diff = lon_array[i] - target_lon
-            distance = np.sqrt(lat_diff**2 + lon_diff**2)
-
-            if distance < min_distance:
-                min_distance = distance
-                cell_idx = i
-                cell_id = int(ID_array[i])
+        # Vectorized Euclidean approximation on 1D unstructured arrays
+        dist_sq = (lat_array - target_lat) ** 2 + (lon_array - target_lon) ** 2
+        min_idx = int(np.argmin(dist_sq))
+        cell_idx = min_idx
+        cell_id = int(ID_array[min_idx])
+        min_distance = float(np.sqrt(dist_sq[min_idx]))
 
     # Check if we found a reasonable match (within ~1 degree)
     if min_distance > 1.0:
@@ -435,9 +397,7 @@ def find_closest_cell(
             f"Warning: Closest cell is {min_distance:.4f} degrees away from target (lat={target_lat:.4f}, lon={target_lon:.4f})"
         )
 
-    print(
-        f"    Found closest cell: distance={min_distance:.4f} degrees, cell_id={cell_id}"
-    )
+    print(f"    Found closest cell: distance={min_distance:.4f} degrees, cell_id={cell_id}")
 
     return cell_idx, cell_id
 
@@ -467,9 +427,7 @@ def get_structured_indices(cell_idx: int, nrow: int, ncol: int) -> Tuple[int, in
     return row, col
 
 
-def verify_bifurc_file(
-    filename: str, num_bifurc_points: int, is_structured: bool
-) -> None:
+def verify_bifurc_file(filename: str, num_bifurc_points: int, is_structured: bool) -> None:
     """
     Verify the created file has correct structure and data.
 
@@ -497,9 +455,7 @@ def verify_bifurc_file(
         if is_structured:
             # Structured mesh verification
             nlon, nlat, ndownstream = dnID_data.shape
-            print(
-                f"  Structured mesh - dnID dimensions: {nlon} x {nlat} x {ndownstream}"
-            )
+            print(f"  Structured mesh - dnID dimensions: {nlon} x {nlat} x {ndownstream}")
 
             # Count non-missing values in each layer
             for k in range(ndownstream):
@@ -529,13 +485,9 @@ def verify_bifurc_file(
 
         # Check if we have the expected number of bifurcation points
         if bifurc_count == num_bifurc_points:
-            print(
-                f"  ✓ Expected {num_bifurc_points} bifurcation points, found {bifurc_count}"
-            )
+            print(f"  ✓ Expected {num_bifurc_points} bifurcation points, found {bifurc_count}")
         else:
-            print(
-                f"  ✗ Expected {num_bifurc_points} bifurcation points, found {bifurc_count}"
-            )
+            print(f"  ✗ Expected {num_bifurc_points} bifurcation points, found {bifurc_count}")
 
         # Count non-zero ratio and demand values
         nonzero_ratios = np.sum(bifurc_ratio > 0)

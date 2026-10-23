@@ -1,7 +1,6 @@
 import os
 import sys
-
-sys.setrecursionlimit(100000)
+from collections import deque
 from datetime import datetime
 
 import numpy as np
@@ -10,24 +9,17 @@ from pyearth.gis.geometry.calculate_distance_based_on_longitude_latitude import 
     calculate_distance_based_on_longitude_latitude,
 )
 from pyearthbuffer.utility.create_gcs_buffer_zone import create_polyline_buffer_zone
-from pyflowline.classes.confluence import pyconfluence
 from pyflowline.classes.rivergraph import pyrivergraph
 from pyflowline.configuration.change_json_key_value import change_json_key_value
-from pyflowline.configuration.config_manager import (
-    create_pyflowline_template_configuration_file,
-)
+from pyflowline.configuration.config_manager import create_pyflowline_template_configuration_file
 from pyflowline.formats.convert_coordinates import convert_gcs_coordinates_to_flowline
 from pyflowline.formats.export_flowline import export_flowline_to_geojson
 from rtree.index import Index as RTreeindex
 
-from hexwatershed_utility.preprocess.feature.river.get_outlet_location import (
-    get_outlet_location,
-)
+from hexwatershed_utility.preprocess.feature.river.get_outlet_location import get_outlet_location
 
 
-def convert_geometry_flowline(
-    pGeometry_in, lFlowlineIndex, lID, lOutletID, lStream_order
-):
+def convert_geometry_flowline(pGeometry_in, lFlowlineIndex, lID, lOutletID, lStream_order):
     aCoords = list()
     nPoint = pGeometry_in.GetPointCount()
     if nPoint < 2:
@@ -242,34 +234,23 @@ def simplify_hydrorivers_network(
 
                     # Use get_outlet_location to get outlet coordinates from the basin file
                     try:
-                        dLongitude_outlet, dLatitude_outlet = get_outlet_location(
-                            sFilename_basin
-                        )
+                        dLongitude_outlet, dLatitude_outlet = get_outlet_location(sFilename_basin)
                         # Try to get drainage area from the basin file attributes
                         pDriver_geojson = ogr.GetDriverByName("GeoJSON")
-                        pDataset_basin = pDriver_geojson.Open(
-                            sFilename_basin, gdal.GA_ReadOnly
-                        )
+                        pDataset_basin = pDriver_geojson.Open(sFilename_basin, gdal.GA_ReadOnly)
                         dDrainage_area = dDrainage_area_threshold_in
                         if pDataset_basin is not None:
                             pLayer_basin = pDataset_basin.GetLayer(0)
                             pFeature_basin = pLayer_basin.GetFeature(0)
                             if pFeature_basin is not None:
                                 try:
-                                    if (
-                                        pFeature_basin.GetFieldIndex("drainage_area")
-                                        >= 0
-                                    ):
-                                        dDrainage_area = pFeature_basin.GetField(
-                                            "drainage_area"
-                                        )
-                                except:
+                                    if pFeature_basin.GetFieldIndex("drainage_area") >= 0:
+                                        dDrainage_area = pFeature_basin.GetField("drainage_area")
+                                except Exception:
                                     pass
                             pDataset_basin = None
 
-                        dDrainage_area_threshold = (
-                            dDrainage_area * dDrainage_area_threshold_ratio
-                        )
+                        dDrainage_area_threshold = dDrainage_area * dDrainage_area_threshold_ratio
 
                         # Update configuration for this basin
                         change_json_key_value(
@@ -301,9 +282,7 @@ def simplify_hydrorivers_network(
                             iBasin_index_in=i,
                         )
                     except ValueError as e:
-                        print(
-                            f"Warning: Could not get outlet location for basin {sBasin}: {e}"
-                        )
+                        print(f"Warning: Could not get outlet location for basin {sBasin}: {e}")
                         continue
 
                 print(f"Generated pyflowline configuration files:")
@@ -317,7 +296,7 @@ def simplify_hydrorivers_network(
             print("=" * 80)
             return nOutlet_actual
 
-    ### Simplify hydroshed flowlines
+    # Simplify hydroshed flowlines
     # check file exists
     if not os.path.isfile(sFilename_flowline_hydroshed_in):
         print("This input file does not exist: ", sFilename_flowline_hydroshed_in)
@@ -328,13 +307,9 @@ def simplify_hydrorivers_network(
     # check the file type using extension
     sFile_extension = os.path.splitext(sFilename_flowline_hydroshed_in)[1]
     if sFile_extension == ".geojson":
-        pDataset_in = pDriver_geojson.Open(
-            sFilename_flowline_hydroshed_in, gdal.GA_ReadOnly
-        )
+        pDataset_in = pDriver_geojson.Open(sFilename_flowline_hydroshed_in, gdal.GA_ReadOnly)
     else:
-        pDataset_in = pDriver_shapefile.Open(
-            sFilename_flowline_hydroshed_in, gdal.GA_ReadOnly
-        )
+        pDataset_in = pDriver_shapefile.Open(sFilename_flowline_hydroshed_in, gdal.GA_ReadOnly)
 
     pLayer_shapefile = pDataset_in.GetLayer(0)
     pSpatialRef_shapefile = pLayer_shapefile.GetSpatialRef()
@@ -391,13 +366,9 @@ def simplify_hydrorivers_network(
                 sRiver_name = pFeature_shapefile.GetField("NAME")
 
             # Store river name by MAIN_RIV ID if we haven't seen it yet or if this is a main river
-            if (
-                sRiver_name
-                and sRiver_name != "Unknown"
-                and lOutletID not in river_name_dict
-            ):
+            if sRiver_name and sRiver_name != "Unknown" and lOutletID not in river_name_dict:
                 river_name_dict[lOutletID] = sRiver_name
-        except:
+        except Exception:
             pass  # If field doesn't exist, keep "Unknown"
 
         if iFlag_endorheic_in == 1:  # for endorheic lake only
@@ -464,9 +435,7 @@ def simplify_hydrorivers_network(
                                 # loop through all the lines
                                 nLine = pGeometry_shapefile.GetGeometryCount()
                                 for j in range(0, nLine):
-                                    pGeometry_line = pGeometry_shapefile.GetGeometryRef(
-                                        j
-                                    )
+                                    pGeometry_line = pGeometry_shapefile.GetGeometryRef(j)
                                     pFlowline = convert_geometry_flowline(
                                         pGeometry_line,
                                         lFlowlineIndex,
@@ -480,9 +449,7 @@ def simplify_hydrorivers_network(
                                         pFlowline.dDrainage_area = dDrainage_area
                                         pFlowline.iStream_segment = lOutletID
                                         pFlowline.iStream_order = lStream_order
-                                        aFlowline_hydroshed_upstream_all.append(
-                                            pFlowline
-                                        )
+                                        aFlowline_hydroshed_upstream_all.append(pFlowline)
                                         pFlowline.iFlag_endorheic = iFlag_endorheic
                                         lFlowlineIndex = lFlowlineIndex + 1
                     pass
@@ -603,19 +570,11 @@ def simplify_hydrorivers_network(
             if i != aIntersect[j]:
                 # lon2 = 0.5 * (aFlowline_hydroshed_outlet[aIntersect[j]].pVertex_start.dLongitude_degree + aFlowline_hydroshed_outlet[aIntersect[j]].pVertex_end.dLongitude_degree)
                 # lat2 = 0.5 * (aFlowline_hydroshed_outlet[aIntersect[j]].pVertex_start.dLatitude_degree + aFlowline_hydroshed_outlet[aIntersect[j]].pVertex_end.dLatitude_degree)
-                lon2 = aFlowline_hydroshed_outlet[
-                    aIntersect[j]
-                ].pVertex_end.dLongitude_degree
-                lat2 = aFlowline_hydroshed_outlet[
-                    aIntersect[j]
-                ].pVertex_end.dLatitude_degree
-                dDistance = calculate_distance_based_on_longitude_latitude(
-                    lon1, lat1, lon2, lat2
-                )
+                lon2 = aFlowline_hydroshed_outlet[aIntersect[j]].pVertex_end.dLongitude_degree
+                lat2 = aFlowline_hydroshed_outlet[aIntersect[j]].pVertex_end.dLatitude_degree
+                dDistance = calculate_distance_based_on_longitude_latitude(lon1, lat1, lon2, lat2)
                 dDrainage_area_a = aFlowline_hydroshed_outlet[i].dDrainage_area
-                dDrainage_area_b = aFlowline_hydroshed_outlet[
-                    aIntersect[j]
-                ].dDrainage_area
+                dDrainage_area_b = aFlowline_hydroshed_outlet[aIntersect[j]].dDrainage_area
                 if (
                     aFlowline_hydroshed_outlet[i].iFlag_endorheic == 1
                     and aFlowline_hydroshed_outlet[aIntersect[j]].iFlag_endorheic == 1
@@ -679,15 +638,11 @@ def simplify_hydrorivers_network(
     aAttribute_field = ["lineid", "downstream_id", "drainage_area"]
     aAttribute_dtype = ["int", "int", "float"]
     aAttribute_data = list()
-    aAttribute_data.append(
-        np.array([pFlowline.lFlowlineID for pFlowline in aFlowline_all])
-    )
+    aAttribute_data.append(np.array([pFlowline.lFlowlineID for pFlowline in aFlowline_all]))
     aAttribute_data.append(
         np.array([pFlowline.lFlowlineID_downstream for pFlowline in aFlowline_all])
     )
-    aAttribute_data.append(
-        np.array([pFlowline.dDrainage_area for pFlowline in aFlowline_all])
-    )
+    aAttribute_data.append(np.array([pFlowline.dDrainage_area for pFlowline in aFlowline_all]))
     export_flowline_to_geojson(
         aFlowline_all,
         sFilename_flowline_hydroshed_tmp,
@@ -699,68 +654,31 @@ def simplify_hydrorivers_network(
 
     def is_downstream(iStream_segment_upstream, iStream_segment_downstream):
         """
-        Check if flowline iStream_segment_downstream is downstream of flowline iStream_segment_upstream.
-        Handles cases where a flowline has multiple downstream branches.
-        Args:
-            iStream_segment_upstream: Stream segment ID of the upstream flowline
-            iStream_segment_downstream: Stream segment ID of the downstream flowline
-        Returns:
-            1 if iStream_segment_downstream is downstream of iStream_segment_upstream, 0 otherwise
+        Check if flowline iStream_segment_downstream is downstream of flowline iStream_segment_upstream
+        using an iterative BFS queue to avoid recursive call-stack overflow.
         """
         if iStream_segment_upstream == iStream_segment_downstream:
             return 1
-        else:
-            if iStream_segment_upstream not in stream_segment_dict:
-                return 0
-            index_current = stream_segment_dict[iStream_segment_upstream]
-            aFlowline_downstream = aFlowline_basin_simplified[
-                index_current
-            ].aFlowline_downstream
-            # lStream_segment_index_next = aFlowline_basin_simplified[index_current].lFlowlineIndex_downstream
+
+        queue = deque([iStream_segment_upstream])
+        visited = {iStream_segment_upstream}
+
+        while queue:
+            curr_seg = queue.popleft()
+            if curr_seg not in stream_segment_dict:
+                continue
+
+            index_current = stream_segment_dict[curr_seg]
+            aFlowline_downstream = aFlowline_basin_simplified[index_current].aFlowline_downstream
             for pFlowline in aFlowline_downstream:
-                if pFlowline.iStream_segment not in stream_segment_dict:
-                    continue
-                lStream_segment_index_next = stream_segment_dict[
-                    pFlowline.iStream_segment
-                ]  # pFlowline.lFlowlineIndex
-                while (
-                    lStream_segment_index_next != -1
-                    and lStream_segment_index_next is not None
-                ):
-                    lStream_segment_next = aFlowline_basin_simplified[
-                        lStream_segment_index_next
-                    ].iStream_segment
-                    if lStream_segment_next == iStream_segment_downstream:
-                        return 1
-                    else:
-                        aFlowline_downstream_dummy = aFlowline_basin_simplified[
-                            lStream_segment_index_next
-                        ].aFlowline_downstream
-                        # lStream_segment_index_next = aFlowline_basin_simplified[lStream_segment_index_next].lFlowlineIndex_downstream
-                        if len(aFlowline_downstream_dummy) > 0:
-                            # Check all downstream branches recursively
-                            for pFlowline_next in aFlowline_downstream_dummy:
-                                if (
-                                    is_downstream(
-                                        pFlowline_next.iStream_segment,
-                                        iStream_segment_downstream,
-                                    )
-                                    == 1
-                                ):
-                                    return 1
-                            # Continue with the first branch in the while loop
-                            if (
-                                aFlowline_downstream_dummy[0].iStream_segment
-                                in stream_segment_dict
-                            ):
-                                lStream_segment_index_next = stream_segment_dict[
-                                    aFlowline_downstream_dummy[0].iStream_segment
-                                ]
-                            else:
-                                lStream_segment_index_next = -1
-                        else:
-                            lStream_segment_index_next = -1
-            return 0
+                seg_next = pFlowline.iStream_segment
+                if seg_next == iStream_segment_downstream:
+                    return 1
+                if seg_next not in visited and seg_next in stream_segment_dict:
+                    visited.add(seg_next)
+                    queue.append(seg_next)
+
+        return 0
 
     # now we will use the pyflowline package algorithm to simplify the flowlines
     nFlowline_outlet = len(aFlowline_hydroshed_outlet_simplified)
@@ -820,9 +738,7 @@ def simplify_hydrorivers_network(
         lFlowlineIndex = stream_segment_dict[iStream_segment_in]
         pFlowline_curent = aFlowline_basin_simplified[lFlowlineIndex]
         aUpstream_flowline = pFlowline_curent.aFlowline_upstream
-        aUpstream_segment = [
-            pFlowline.iStream_segment for pFlowline in aUpstream_flowline
-        ]
+        aUpstream_segment = [pFlowline.iStream_segment for pFlowline in aUpstream_flowline]
         if aUpstream_segment is None:
             return
         nUpstream = len(aUpstream_segment)
@@ -850,17 +766,13 @@ def simplify_hydrorivers_network(
                         if iStream_segment_b not in rtree_flowline_dict:
                             continue
                         idx = rtree_flowline_dict[iStream_segment_b]
-                        pFlowline_b = aFlowline_rtree[
-                            idx
-                        ]  # this flowline is already in the rtree
+                        pFlowline_b = aFlowline_rtree[idx]  # this flowline is already in the rtree
                         # iStream_segment_b = pFlowline_b.iStream_segment
                         if is_downstream(iStream_segment_a, iStream_segment_b) == 1:
                             # this is the flowline that we are looking for
                             continue
                         else:
-                            dDistance = pFlowline_a.calculate_distance_to_polyline(
-                                pFlowline_b
-                            )
+                            dDistance = pFlowline_a.calculate_distance_to_polyline(pFlowline_b)
                             if dDistance < dDistance_tolerance_in:
                                 iFlag_keep = 0
                                 print(
@@ -939,18 +851,13 @@ def simplify_hydrorivers_network(
                                     pFlowline_b = aFlowline_rtree[idx]
                                     if (
                                         iStream_segment_b in aStream_segment_confluence
-                                        or is_downstream(
-                                            iSegment_upstream, iStream_segment_b
-                                        )
-                                        == 1
+                                        or is_downstream(iSegment_upstream, iStream_segment_b) == 1
                                     ):
                                         # this is the flowline that we are looking for
                                         continue
                                     else:
-                                        dDistance = (
-                                            pFlowline_a.calculate_distance_to_polyline(
-                                                pFlowline_b
-                                            )
+                                        dDistance = pFlowline_a.calculate_distance_to_polyline(
+                                            pFlowline_b
                                         )
                                         if dDistance < dDistance_tolerance_in:
                                             iFlag_keep = 0
@@ -966,16 +873,10 @@ def simplify_hydrorivers_network(
                                             pass
                                 # add it into the index tree
                                 if iFlag_keep == 1:
-                                    rtree_flowline_dict[iSegment_upstream] = len(
-                                        aFlowline_rtree
-                                    )
+                                    rtree_flowline_dict[iSegment_upstream] = len(aFlowline_rtree)
                                     aFlowline_rtree.append(pFlowline_a)
                                     index_reach.insert(iSegment_upstream, pBound_a)
-                                    if iSegment_upstream == 624:
-                                        print("debug")
-                                    tag_upstream(
-                                        iSegment_upstream, dDrainage_area_threshold
-                                    )
+                                    tag_upstream(iSegment_upstream, dDrainage_area_threshold)
                                 else:
                                     # aFlowline_all[index_current].iFlag_keep = 0
                                     print(
@@ -986,16 +887,10 @@ def simplify_hydrorivers_network(
                                     pass
 
                             else:  # no intersecting flowlines
-                                rtree_flowline_dict[iSegment_upstream] = len(
-                                    aFlowline_rtree
-                                )
+                                rtree_flowline_dict[iSegment_upstream] = len(aFlowline_rtree)
                                 aFlowline_rtree.append(pFlowline_a)
                                 index_reach.insert(iSegment_upstream, pBound_a)
-                                if iSegment_upstream == 624:
-                                    print("debug")
-                                tag_upstream(
-                                    iSegment_upstream, dDrainage_area_threshold
-                                )
+                                tag_upstream(iSegment_upstream, dDrainage_area_threshold)
                                 pass
                             pass
                         else:
@@ -1014,10 +909,7 @@ def simplify_hydrorivers_network(
                                     dDrainage_area_b = pFlowline_b.dDrainage_area
                                     if (
                                         iStream_segment_b in aStream_segment_confluence
-                                        or is_downstream(
-                                            iSegment_upstream, iStream_segment_b
-                                        )
-                                        == 1
+                                        or is_downstream(iSegment_upstream, iStream_segment_b) == 1
                                     ):
                                         # this is the flowline that we are looking for
                                         continue
@@ -1040,9 +932,7 @@ def simplify_hydrorivers_network(
                                                         rtree_flowline_dict,
                                                         iStream_segment_b,
                                                     )
-                                                    pBound_b = all_bounds_cache[
-                                                        iStream_segment_b
-                                                    ]
+                                                    pBound_b = all_bounds_cache[iStream_segment_b]
                                                     success2 = remove_from_rtree_by_id_and_bounds(
                                                         index_reach,
                                                         iStream_segment_b,
@@ -1065,16 +955,10 @@ def simplify_hydrorivers_network(
 
                                 # add it into the index tree
                                 if iFlag_keep == 1:
-                                    rtree_flowline_dict[iSegment_upstream] = len(
-                                        aFlowline_rtree
-                                    )
+                                    rtree_flowline_dict[iSegment_upstream] = len(aFlowline_rtree)
                                     aFlowline_rtree.append(pFlowline_a)
-                                    if iSegment_upstream == 624:
-                                        print("debug")
                                     index_reach.insert(iSegment_upstream, pBound_a)
-                                    tag_upstream(
-                                        iSegment_upstream, dDrainage_area_threshold
-                                    )
+                                    tag_upstream(iSegment_upstream, dDrainage_area_threshold)
                                 else:
                                     print(
                                         "Flowline ",
@@ -1083,16 +967,10 @@ def simplify_hydrorivers_network(
                                     )
                                     pass
                             else:
-                                rtree_flowline_dict[iSegment_upstream] = len(
-                                    aFlowline_rtree
-                                )
+                                rtree_flowline_dict[iSegment_upstream] = len(aFlowline_rtree)
                                 aFlowline_rtree.append(pFlowline_a)
-                                if iSegment_upstream == 624:
-                                    print("debug")
                                 index_reach.insert(iSegment_upstream, pBound_a)
-                                tag_upstream(
-                                    iSegment_upstream, dDrainage_area_threshold
-                                )
+                                tag_upstream(iSegment_upstream, dDrainage_area_threshold)
                     pass
                 else:
                     # more than 2?
@@ -1104,13 +982,13 @@ def simplify_hydrorivers_network(
             # if a flowline has no upstream, then it is a headwater
             pass
 
+    aOutlet_coordate = np.full((nFlowline_outlet, 2), -9999, dtype=float)
+
     if iFlag_endorheic_in == 1:
         nOutlet_actual = 1
-        pass
     else:  # normal condition
         nOutlet_actual = min(nOutlet_largest, nFlowline_outlet)
         nBasin = nFlowline_outlet
-        aOutlet_coordate = np.full((nBasin, 2), -9999, dtype=float)
 
     # create a configuration file
     # this configuration will be used for the pyflowline standalone simulation,
@@ -1133,9 +1011,7 @@ def simplify_hydrorivers_network(
         )
 
     # Create logfile for river names and drainage areas
-    sFilename_logfile = sFilename_flowline_hydroshed_out.replace(
-        ".geojson", "_rivers_log.txt"
-    )
+    sFilename_logfile = sFilename_flowline_hydroshed_out.replace(".geojson", "_rivers_log.txt")
     with open(sFilename_logfile, "w") as log_file:
         log_file.write("=" * 80 + "\n")
         log_file.write(f"River Network Simplification Log\n")
@@ -1144,9 +1020,7 @@ def simplify_hydrorivers_network(
         log_file.write(f"Input file: {sFilename_flowline_hydroshed_in}\n")
         log_file.write(f"Output file: {sFilename_flowline_hydroshed_out}\n")
         log_file.write(f"Distance tolerance: {dDistance_tolerance_in:.2f} m\n")
-        log_file.write(
-            f"Drainage area threshold: {dDrainage_area_threshold_in:.2e} m²\n"
-        )
+        log_file.write(f"Drainage area threshold: {dDrainage_area_threshold_in:.2e} m²\n")
         log_file.write(f"Number of largest basins requested: {nOutlet_largest}\n")
         log_file.write(f"Number of largest basins available: {nOutlet_actual}\n")
         log_file.write("=" * 80 + "\n\n")
@@ -1168,15 +1042,11 @@ def simplify_hydrorivers_network(
         # need a special method because the outlet itself is a confluence
         pFlowline_current = aFlowline_hydroshed_outlet_simplified[0]
         pVertex_outlet = pFlowline_current.pVertex_end
-        dDrainage_area_threshold = (
-            pFlowline_current.dDrainage_area * dDrainage_area_threshold_ratio
-        )
+        dDrainage_area_threshold = pFlowline_current.dDrainage_area * dDrainage_area_threshold_ratio
         pRivergraph = pyrivergraph(aFlowline_all, pVertex_outlet)
         aFlowline_basin_simplified = pRivergraph.update_headwater_stream_order()
         aFlowline_basin_simplified = pRivergraph.merge_flowline()
-        aFlowline_basin_simplified, aStream_segment = (
-            pRivergraph.define_stream_segment()
-        )
+        aFlowline_basin_simplified, aStream_segment = pRivergraph.define_stream_segment()
         if len(aFlowline_basin_simplified) == 1:
             aFlowline_rtree.append(aFlowline_basin_simplified[0])
             pass
@@ -1211,10 +1081,8 @@ def simplify_hydrorivers_network(
     else:
         for i in range(0, nFlowline_outlet, 1):
             sBasin = f"{i + 1:04d}"
-            sFilename_flowline_hydroshed_simplified = (
-                sFilename_flowline_hydroshed_out.replace(
-                    ".geojson", "_" + sBasin + ".geojson"
-                )
+            sFilename_flowline_hydroshed_simplified = sFilename_flowline_hydroshed_out.replace(
+                ".geojson", "_" + sBasin + ".geojson"
             )
             aFlowline_rtree.clear()
             pFlowline_current = aFlowline_hydroshed_outlet_simplified[i]
@@ -1223,33 +1091,29 @@ def simplify_hydrorivers_network(
             dDrainage_area_threshold = (
                 pFlowline_current.dDrainage_area * dDrainage_area_threshold_ratio
             )  # this is a key threshold to keep flowline with large drainage area even they are close
-            aOulet_coordate[i, 0] = dLongitude_outlet
-            aOulet_coordate[i, 1] = dLatitude_outlet
+            aOutlet_coordate[i, 0] = dLongitude_outlet
+            aOutlet_coordate[i, 1] = dLatitude_outlet
             pVertex_outlet = pFlowline_current.pVertex_end
 
             pRivergraph = pyrivergraph(aFlowline_all, pVertex_outlet)
             aFlowline_basin_simplified = pRivergraph.update_headwater_stream_order()
             aFlowline_basin_simplified = pRivergraph.merge_flowline()
-            aFlowline_basin_simplified, aStream_segment = (
-                pRivergraph.define_stream_segment()
-            )
+            aFlowline_basin_simplified, aStream_segment = pRivergraph.define_stream_segment()
             print(aStream_segment)
             if len(aFlowline_basin_simplified) == 1:
                 aFlowline_rtree.append(aFlowline_basin_simplified[0])
                 pass
             else:
                 pRivergraph.define_stream_topology()
-                aFlowline_basin_simplified, aStream_order = (
-                    pRivergraph.define_stream_order(iFlag_so_method_in=1)
+                aFlowline_basin_simplified, aStream_order = pRivergraph.define_stream_order(
+                    iFlag_so_method_in=1
                 )
                 # Add index to the filename for multiple basin support
                 aStream_segment = np.array(aStream_segment)
                 aStream_order = np.array(aStream_order)
 
                 # Create dictionaries for O(1) lookups
-                stream_segment_dict = {
-                    seg: idx for idx, seg in enumerate(aStream_segment)
-                }
+                stream_segment_dict = {seg: idx for idx, seg in enumerate(aStream_segment)}
                 rtree_flowline_dict = {}
 
                 index_reach = RTreeindex()
@@ -1271,9 +1135,7 @@ def simplify_hydrorivers_network(
                 sRiver_name = river_name_dict.get(
                     lFlowlineID_current, f"River_{lFlowlineID_current}"
                 )
-                dDrainage_area_km2 = (
-                    pFlowline_current.dDrainage_area / 1.0e6
-                )  # Convert m² to km²
+                dDrainage_area_km2 = pFlowline_current.dDrainage_area / 1.0e6  # Convert m² to km²
                 dDrainage_area_m2 = pFlowline_current.dDrainage_area
 
                 with open(sFilename_logfile, "a") as log_file:
@@ -1362,9 +1224,7 @@ def simplify_hydrorivers_network(
         )
         pass
     else:
-        export_flowline_to_geojson(
-            aFlowline_rtree_all, sFilename_flowline_hydroshed_out
-        )
+        export_flowline_to_geojson(aFlowline_rtree_all, sFilename_flowline_hydroshed_out)
 
     # Save the largest available basins combined into one GeoJSON file
     if len(aFlowline_rtree_largest) > 0:
@@ -1387,9 +1247,7 @@ def simplify_hydrorivers_network(
             aAttribute_field=["stream_segment", "stream_order"],
             aAttribute_dtype=["int", "int"],
         )
-        print(
-            f"Saved {nOutlet_actual} largest basins combined to: {sFilename_largest_basins}"
-        )
+        print(f"Saved {nOutlet_actual} largest basins combined to: {sFilename_largest_basins}")
         print(
             f"Number of flowlines in largest {nOutlet_actual} basins: {len(aFlowline_rtree_largest)}"
         )
@@ -1406,9 +1264,7 @@ def simplify_hydrorivers_network(
         log_file.write(f"Total number of outlet flowlines: {nFlowline_outlet}\n")
         log_file.write(f"Number of largest basins requested: {nOutlet_largest}\n")
         log_file.write(f"Number of largest basins logged: {nOutlet_actual}\n")
-        log_file.write(
-            f"Total flowlines in simplified network: {len(aFlowline_rtree_all)}\n"
-        )
+        log_file.write(f"Total flowlines in simplified network: {len(aFlowline_rtree_all)}\n")
         log_file.write(
             f"Flowlines in {nOutlet_actual} largest basins: {len(aFlowline_rtree_largest)}\n"
         )

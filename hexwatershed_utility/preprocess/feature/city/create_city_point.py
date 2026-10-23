@@ -1,71 +1,97 @@
-import os, sys
-from osgeo import ogr, osr, gdal
+import csv
+import logging
+import os
+from osgeo import ogr, osr
 
-from pyearth.system.define_global_variables import *
-from pyearth.toolbox.reader.text_reader_string import text_reader_string
+logger = logging.getLogger(__name__)
 
-sWorkspace_data = '/compyfs/liao313/00raw/city/simplemaps_worldcities_basicv1.77'
-sFilename_city = 'worldcities.csv'
 
-sFilename = os.path.join(sWorkspace_data, sFilename_city)
+def create_city_point(
+    sFilename_csv_in: str,
+    sFilename_geojson_out: str,
+    dPopulation_min: float = 1.0e6,
+) -> str:
+    """
+    Extract major cities exceeding a population threshold from a CSV file into GeoJSON points.
 
-aDatasets = text_reader_string(sFilename, iSkipline_in=1, cDelimiter_in=',')
+    Parameters
+    ----------
+    sFilename_csv_in : str
+        Path to world cities CSV dataset.
+    sFilename_geojson_out : str
+        Path to output GeoJSON file.
+    dPopulation_min : float, default=1.0e6
+        Minimum population cutoff.
 
-aLongitude = aDatasets[:, 3]
-aLatitude = aDatasets[:, 2]
-aCity = aDatasets[:, 0]
-aPopulation = aDatasets[:, 9]
+    Returns
+    -------
+    str
+        Path to created GeoJSON file.
+    """
+    if not os.path.exists(sFilename_csv_in):
+        raise FileNotFoundError(f"Input city CSV not found: {sFilename_csv_in}")
 
-nrow = len(aDatasets)
+    pDriver = ogr.GetDriverByName("GeoJSON")
+    if os.path.exists(sFilename_geojson_out):
+        pDriver.DeleteDataSource(sFilename_geojson_out)
 
-sFilename_out = os.path.join(sWorkspace_data, 'large_cities.geojson')
-pDriver = ogr.GetDriverByName('GeoJSON')
+    srs = osr.SpatialReference()
+    srs.ImportFromEPSG(4326)
 
-#define spatial reference
-srs = osr.SpatialReference()
-srs.ImportFromEPSG(4326)
+    pDataSource = pDriver.CreateDataSource(sFilename_geojson_out)
+    pLayer = pDataSource.CreateLayer("city", srs, ogr.wkbPoint)
 
-if os.path.exists(sFilename_out):
-    pDriver.DeleteDataSource(sFilename_out)
+    pLayer.CreateField(ogr.FieldDefn("city", ogr.OFTString))
+    pLayer.CreateField(ogr.FieldDefn("latitude", ogr.OFTReal))
+    pLayer.CreateField(ogr.FieldDefn("longitude", ogr.OFTReal))
+    pLayer.CreateField(ogr.FieldDefn("population", ogr.OFTReal))
 
-pDataSource = pDriver.CreateDataSource(sFilename_out)
-pLayer = pDataSource.CreateLayer('city', srs, ogr.wkbPoint)
-#what attribute should be added?
-pField = ogr.FieldDefn('city', ogr.OFTString)
-pLayer.CreateField(pField)
-pField = ogr.FieldDefn('latitude', ogr.OFTReal)
-pLayer.CreateField(pField)
-pField = ogr.FieldDefn('longitude', ogr.OFTReal)
-pLayer.CreateField(pField)
-pField = ogr.FieldDefn('population', ogr.OFTReal)
-pLayer.CreateField(pField)
-pLayerDefn = pLayer.GetLayerDefn()
-pFeature = ogr.Feature(pLayerDefn)
+    pLayerDefn = pLayer.GetLayerDefn()
+    pFeature = ogr.Feature(pLayerDefn)
 
-for i in range(1, nrow):
-    sName = aCity[i]
-    dLatitude = float(aLatitude[i])
-    dLongitude = float(aLongitude[i])
+    count = 0
+    with open(sFilename_csv_in, "r", encoding="utf-8", errors="ignore") as f:
+        reader = csv.reader(f)
+        header = next(reader, None)
+        # Identify columns
+        city_idx = 0
+        lat_idx = 2
+        lon_idx = 3
+        pop_idx = 9
 
-    sPopulation = aPopulation[i]
-    if sPopulation == '':
-        continue
+        for row in reader:
+            if len(row) <= max(city_idx, lat_idx, lon_idx, pop_idx):
+                continue
+            sName = row[city_idx]
+            try:
+                dLatitude = float(row[lat_idx])
+                dLongitude = float(row[lon_idx])
+                pop_str = row[pop_idx].strip()
+                if not pop_str:
+                    continue
+                dPopulation = float(pop_str)
+            except ValueError:
+                continue
 
-    dPopulation = float(sPopulation)
-    if dPopulation < 1.0E6:
-        continue
-    #create point geometry
-    pPoint = ogr.Geometry(ogr.wkbPoint)
-    pPoint.AddPoint(dLongitude, dLatitude)
-    pFeature.SetGeometry(pPoint)
-    pFeature.SetField('city', sName)
-    pFeature.SetField('latitude', dLatitude)
-    pFeature.SetField('longitude', dLongitude)
-    pFeature.SetField('population', dPopulation)
-    pLayer.CreateFeature(pFeature)
-    pass
+            if dPopulation < dPopulation_min:
+                continue
 
-pDataSource.Destroy()
+            pPoint = ogr.Geometry(ogr.wkbPoint)
+            pPoint.AddPoint(dLongitude, dLatitude)
+            pFeature.SetGeometry(pPoint)
+            pFeature.SetField("city", sName)
+            pFeature.SetField("latitude", dLatitude)
+            pFeature.SetField("longitude", dLongitude)
+            pFeature.SetField("population", dPopulation)
+            pLayer.CreateFeature(pFeature)
+            count += 1
 
-print('finished')
+    pDataSource = None
+    logger.info("Saved %d cities to %s", count, sFilename_geojson_out)
+    return sFilename_geojson_out
 
+
+if __name__ == "__main__":
+    import sys
+    if len(sys.argv) > 2:
+        create_city_point(sys.argv[1], sys.argv[2])

@@ -94,6 +94,7 @@ def build_contributing_cells_all(aCellID, aCellID_downslope):
 
     # Kahn's topological sort: process headwater cells first
     from collections import deque
+
     queue = deque(int(i) for i in np.where(in_degree == 0)[0])
 
     while queue:

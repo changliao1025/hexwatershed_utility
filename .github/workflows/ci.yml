@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - development
+  pull_request:
+    branches:
+      - main
+      - development
+
+jobs:
+  lint:
+    name: Code Quality & Linting
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Linting Tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install black==24.10.0 flake8==7.1.1 isort==5.13.2
+
+      - name: Run Black
+        run: black --check --line-length=100 hexwatershed_utility tests
+
+      - name: Run isort
+        run: isort --check-only --profile=black --line-length=100 hexwatershed_utility tests
+
+      - name: Run Flake8
+        run: flake8 hexwatershed_utility tests
+
+  test:
+    name: Test (${{ matrix.os }} - Py${{ matrix.python-version }})
+    needs: lint
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python-version: ["3.10", "3.11", "3.12"]
+
+    defaults:
+      run:
+        shell: bash -el {0}
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Conda Environment
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          auto-update-conda: true
+          python-version: ${{ matrix.python-version }}
+          channels: conda-forge,defaults
+          channel-priority: flexible
+          environment-file: environment.yml
+          activate-environment: hexwatershed_utility
+
+      - name: Install Package in Editable Mode
+        run: |
+          pip install --no-deps -e .
+
+      - name: Run Tests with Pytest
+        run: |
+          pytest --cov=hexwatershed_utility --cov-report=xml tests/
+
+      - name: Upload Coverage Artifact
+        uses: actions/upload-artifact@v4
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
+        with:
+          name: coverage-report
+          path: coverage.xml

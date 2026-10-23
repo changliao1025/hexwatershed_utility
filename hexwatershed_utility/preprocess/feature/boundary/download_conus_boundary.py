@@ -1,24 +1,43 @@
-import requests
 import json
+import logging
+import requests
 
-# Define the URL for the ArcGIS REST service
-url = "https://services1.arcgis.com/cRvLdSPAsRupRo7I/arcgis/rest/services/US_State_Boundaries_(CONUS)/FeatureServer/0/query"
+logger = logging.getLogger(__name__)
 
-# Define the parameters for the query
-params = {
-    "where": "1=1",  # Query all features
-    "outFields": "*",  # Get all fields
-    "f": "geojson"  # Get the output in GeoJSON format
-}
+URL_CONUS = "https://services1.arcgis.com/cRvLdSPAsRupRo7I/arcgis/rest/services/US_State_Boundaries_(CONUS)/FeatureServer/0/query"
 
-# Make the request to the ArcGIS REST service
-response = requests.get(url, params=params)
 
-# Check if the request was successful
-if response.status_code == 200:
-    # Save the response content to a GeoJSON file
-    with open("US_State_Boundaries_CONUS.geojson", "w") as f:
-        json.dump(response.json(), f)
-    print("Data downloaded and saved as US_State_Boundaries_CONUS.geojson")
-else:
-    print(f"Failed to download data. HTTP status code: {response.status_code}")
+def download_conus_boundary(sFilename_geojson_out: str = "US_State_Boundaries_CONUS.geojson") -> str:
+    """
+    Download CONUS state boundaries from ArcGIS REST service as GeoJSON.
+
+    Parameters
+    ----------
+    sFilename_geojson_out : str, default='US_State_Boundaries_CONUS.geojson'
+        Output GeoJSON path.
+
+    Returns
+    -------
+    str
+        Path to the saved GeoJSON file.
+    """
+    params = {
+        "where": "1=1",
+        "outFields": "*",
+        "f": "geojson",
+    }
+
+    response = requests.get(URL_CONUS, params=params, timeout=60)
+    if response.status_code == 200:
+        with open(sFilename_geojson_out, "w") as f:
+            json.dump(response.json(), f)
+        logger.info("Data downloaded and saved to %s", sFilename_geojson_out)
+        return sFilename_geojson_out
+    else:
+        raise RuntimeError(
+            f"Failed to download CONUS boundary. HTTP status code: {response.status_code}"
+        )
+
+
+if __name__ == "__main__":
+    download_conus_boundary()

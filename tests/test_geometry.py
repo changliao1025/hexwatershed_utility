@@ -1,5 +1,7 @@
 import unittest
+
 import numpy as np
+
 from hexwatershed_utility.postprocess.river.get_geometry import get_geometry
 
 

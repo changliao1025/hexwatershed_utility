@@ -1,29 +1,30 @@
-import os
+import datetime
 import math
 import os
-import datetime
 import textwrap
-import numpy as np
-from osgeo import osr
 from urllib.error import URLError
+
+import cartopy.crs as ccrs
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-
+import numpy as np
+import shapely.geometry as sgeom
+from cartopy.mpl.gridliner import LATITUDE_FORMATTER, LONGITUDE_FORMATTER
 from matplotlib.collections import PatchCollection
 from matplotlib.patches import Polygon as mpolygon
-import cartopy.crs as ccrs
-from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
-import shapely.geometry as sgeom
-from pyearth.system.define_global_variables import sPath_proj_lib
-from pyearthviz.map.zebra_frame import zebra_frame
+from osgeo import osr
 from pyearth.gis.geometry.convert_longitude_range import convert_360_to_180
+from pyearth.system.define_global_variables import sPath_proj_lib
 from pyearthviz.formatter import OOMFormatter
 from pyearthviz.map import RasterTileServer
+from pyearthviz.map.zebra_frame import zebra_frame
 
 iYear_current = datetime.datetime.now().year
 sYear = str(iYear_current)
 
-def map_mpas_mesh_file(sFilename_mpas_mesh_netcdf_in,
+
+def map_mpas_mesh_file(
+    sFilename_mpas_mesh_netcdf_in,
     sFilename_output_in=None,
     iFlag_color_in=None,
     iFlag_zebra_in=None,
@@ -43,8 +44,10 @@ def map_mpas_mesh_file(sFilename_mpas_mesh_netcdf_in,
     aLegend_in=None,
     aExtent_in=None,
     pProjection_map_in=None,
-    pProjection_data_in=None,):
+    pProjection_data_in=None,
+):
     import netCDF4 as nc
+
     pSRS_wgs84 = ccrs.PlateCarree()  # for latlon data only
     pSRS_geodetic = ccrs.Geodetic()
 
@@ -99,10 +102,10 @@ def map_mpas_mesh_file(sFilename_mpas_mesh_netcdf_in,
 
     if aExtent_in is not None:
         aExtent = aExtent_in
-        minx, maxx,miny,  maxy = aExtent
+        minx, maxx, miny, maxy = aExtent
     else:
-        #because the earth is roung, we can set it as the half of the world
-        aExtent = [dLongitude_center -90, dLongitude_center + 90, -90,  90]
+        # because the earth is round, we can set it as the half of the world
+        aExtent = [dLongitude_center - 90, dLongitude_center + 90, -90, 90]
         minx, maxx, miny, maxy = aExtent
 
     if dLinewidth_in is not None:
@@ -132,7 +135,6 @@ def map_mpas_mesh_file(sFilename_mpas_mesh_netcdf_in,
     fig = plt.figure(dpi=iDPI)
     fig.set_figwidth(iSize_x)
     fig.set_figheight(iSize_y)
-
 
     pDatasets_in = nc.Dataset(sFilename_mpas_mesh_netcdf_in)
     netcdf_format = pDatasets_in.file_format
@@ -227,14 +229,16 @@ def map_mpas_mesh_file(sFilename_mpas_mesh_netcdf_in,
             iBasemap_zoom_level = iBasemap_zoom_level_in
         else:
             image_size = [1000, 1000]
-            scale_denominator = RasterTileServer.calculate_scale_denominator(aExtent, image_size)
+            scale_denominator = RasterTileServer.calculate_scale_denominator(
+                aExtent, image_size
+            )
             pSrc = osr.SpatialReference()
             pSrc.ImportFromEPSG(3857)  # mercator
             pProjection = pSrc.ExportToWkt()
             iBasemap_zoom_level = RasterTileServer.calculate_zoom_level(
                 scale_denominator, pProjection, dpi=int(iDPI)
             )
-            print('Basemap zoom level: ',iBasemap_zoom_level)
+            print("Basemap zoom level: ", iBasemap_zoom_level)
             pass
         if aBasemap_provider_in is not None:
             nTile_provider = len(aBasemap_provider_in)
@@ -243,13 +247,14 @@ def map_mpas_mesh_file(sFilename_mpas_mesh_netcdf_in,
                 nTile_provider = 5
             dAlpha = 1.0
             aLicense_info_list = []  # Collect all license info
-            #for sBasemap_provider in aBasemap_provider_in:
+            # for sBasemap_provider in aBasemap_provider_in:
             for i in range(nTile_provider):
                 sBasemap_provider = aBasemap_provider_in[i]
                 # Check if this is a Cartopy built-in provider (e.g., 'OSM')
-                if sBasemap_provider == 'OSM':
+                if sBasemap_provider == "OSM":
                     # Use Cartopy's built-in OSM directly
                     from cartopy.io.img_tiles import OSM
+
                     pTiles = OSM()
                     ax.add_image(pTiles, iBasemap_zoom_level, alpha=dAlpha - i * 0.1)
                     # Add OSM attribution
@@ -257,9 +262,16 @@ def map_mpas_mesh_file(sFilename_mpas_mesh_netcdf_in,
                 else:
                     # Use RasterTileServer for custom providers
                     pTile_service = RasterTileServer(sBasemap_provider)
-                    pTiles = pTile_service.get_cartopy_source_with_supersample(supersample = 2)
+                    pTiles = pTile_service.get_cartopy_source_with_supersample(
+                        supersample=2
+                    )
                     # For supersample, use higher zoom level and interpolation
-                    ax.add_image(pTiles, iBasemap_zoom_level, alpha=dAlpha - i * 0.1, interpolation='bilinear')
+                    ax.add_image(
+                        pTiles,
+                        iBasemap_zoom_level,
+                        alpha=dAlpha - i * 0.1,
+                        interpolation="bilinear",
+                    )
                     aLicense_info_list.append(pTile_service.get_license_info())
 
             # Combine all license info and display once
@@ -268,7 +280,8 @@ def map_mpas_mesh_file(sFilename_mpas_mesh_netcdf_in,
                 sLicense_info_wrapped = "\n".join(
                     textwrap.wrap(sLicense_info, width=cwidth)
                 )
-                ax.text(0.5,
+                ax.text(
+                    0.5,
                     0.05,
                     sLicense_info_wrapped,
                     transform=ax.transAxes,
@@ -298,20 +311,24 @@ def map_mpas_mesh_file(sFilename_mpas_mesh_netcdf_in,
 
     # Find cells within the extent (using cell centers as initial filter)
     aCell_mask = np.logical_and(
-        np.logical_and(aLongitudeCell_180 >= minx_buffered, aLongitudeCell_180 <= maxx_buffered),
-        np.logical_and(aLatitudeCell >= miny_buffered, aLatitudeCell <= maxy_buffered)
+        np.logical_and(
+            aLongitudeCell_180 >= minx_buffered, aLongitudeCell_180 <= maxx_buffered
+        ),
+        np.logical_and(aLatitudeCell >= miny_buffered, aLatitudeCell <= maxy_buffered),
     )
     aCell_indices = np.where(aCell_mask)[0]
 
-    print(f"Processing {len(aCell_indices)} cells out of {nCell} total cells within extent")
+    print(
+        f"Processing {len(aCell_indices)} cells out of {nCell} total cells within extent"
+    )
 
     aPolygon = list()
     aEdgecolor = list()
     for i in aCell_indices:
-        #dLon_center = float(aLongitudeCell_180[i])
-        #dLat_center = float(aLatitudeCell[i])
-        #lCellID = int(aIndexToCellID[i])
-        aVertexOnCellIndex = np.array(aVertexOnCell[i,:])
+        # dLon_center = float(aLongitudeCell_180[i])
+        # dLat_center = float(aLatitudeCell[i])
+        # lCellID = int(aIndexToCellID[i])
+        aVertexOnCellIndex = np.array(aVertexOnCell[i, :])
         dummy0 = np.where(aVertexOnCellIndex > 0)
         aVertexIndex = aVertexOnCellIndex[dummy0] - 1
         aLonVertex = aLongitudeVertex_180[aVertexIndex]
@@ -321,7 +338,7 @@ def map_mpas_mesh_file(sFilename_mpas_mesh_netcdf_in,
             print("Vertex number is: ", nVertex, i)
         else:
             aCoords_gcs = list(zip(aLonVertex, aLatVertex))
-            #do i need to close the polygon?  yes
+            # do i need to close the polygon?  yes
             aCoords_gcs.append(aCoords_gcs[0])
             aPolygon.append(aCoords_gcs)
             aEdgecolor.append("none")
@@ -331,9 +348,7 @@ def map_mpas_mesh_file(sFilename_mpas_mesh_netcdf_in,
     else:
         sColor = "black"
     if iFlag_fill == True:
-        aPatch = [
-            mpolygon(poly, closed=True, fill=iFlag_fill) for poly in aPolygon
-        ]
+        aPatch = [mpolygon(poly, closed=True, fill=iFlag_fill) for poly in aPolygon]
         pPC = PatchCollection(
             aPatch,
             alpha=dAlpha,
@@ -342,9 +357,7 @@ def map_mpas_mesh_file(sFilename_mpas_mesh_netcdf_in,
             transform=pProjection_data,
         )
     else:
-        aPatch = [
-            mpolygon(poly, closed=True, fill=iFlag_fill) for poly in aPolygon
-        ]
+        aPatch = [mpolygon(poly, closed=True, fill=iFlag_fill) for poly in aPolygon]
         pPC = PatchCollection(
             aPatch,
             alpha=dAlpha,

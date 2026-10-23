@@ -8,7 +8,7 @@ pre = '';
 input_file = [pre '/compyfs/zhou014/datasets/E3SM_inputs/MOSART_Global_half_20210422.nc'];
 output_file = [pre '/compyfs/zhou014/datasets/E3SM_inputs/MOSART_Global_half_20210422_bifurc_US.nc'];
 csv_file = [pre '/compyfs/zhou014/E3SMv3/bifurcation/MOSART_input_generation/US_IBT_2d.csv'];
-% 
+%
 
 %input_file = [pre '/compyfs/liao313/04model/pyhexwatershed/sag/pyhexwatershed20250708002/hexwatershed/mosart_sag_parameter.nc'];
 %csv_file = [pre '/qfs/people/zhou014/E3SMv3/code/MOSART_bifurcation/components/mosart/src/DRB_IBT.csv';
@@ -171,32 +171,32 @@ fprintf('Found %d bifurcation/IBT entries\n', height(bif));
 
 % Initialize arrays for cell IDs to be filled in CSV
 cell_ids = zeros(height(bif), 1);
-dncell1_ids = zeros(height(bif), 1); 
+dncell1_ids = zeros(height(bif), 1);
 dncell2_ids = zeros(height(bif), 1);
 
 % Process each row in the CSV
 for i = 1:height(bif)
     fprintf('\nProcessing row %d: %s\n', i, bif.note{i});
-    
+
     % Extract data from CSV row
     split_lat = bif.cell_lat(i);
     split_lon = bif.cell_long(i);
     is_ibt = bif.ibt(i);
-    
+
     % Convert longitude from 0-360 to -180-180 format if needed
    if split_lon > 180
        split_lon = split_lon - 360;
    end
-    
+
     % Find closest cell for splitting point
     [split_cell_idx, split_cell_id] = find_closest_cell(lat, lon, ID, split_lat, split_lon, is_structured);
     if split_cell_idx == -1
         error('Could not find cell for splitting point at lat=%.4f, lon=%.4f', split_lat, split_lon);
     end
-    
+
     fprintf('  Split point: lat=%.4f, lon=%.4f -> cell_id=%d\n', split_lat, split_lon, split_cell_id);
     cell_ids(i) = split_cell_id;
-    
+
     % Handle primary downstream cell
     if bif.dncell1_lat(i) ~= -9999 && bif.dncell1_long(i) ~= -9999
         % Custom primary downstream specified
@@ -206,15 +206,15 @@ for i = 1:height(bif)
      %   if dn1_lon > 180
      %       dn1_lon = dn1_lon - 360;
      %   end
-        
+
         [dn1_cell_idx, dn1_cell_id] = find_closest_cell(lat, lon, ID, dn1_lat, dn1_lon, is_structured);
         if dn1_cell_idx == -1
             error('Could not find primary downstream cell at lat=%.4f, lon=%.4f', dn1_lat, dn1_lon);
         end
-        
+
         fprintf('  Primary downstream: lat=%.4f, lon=%.4f -> cell_id=%d\n', dn1_lat, dn1_lon, dn1_cell_id);
         dncell1_ids(i) = dn1_cell_id;
-        
+
         % Update primary downstream in arrays
         if is_structured
             [split_row, split_col] = get_structured_indices(split_cell_idx, nrow, ncol);
@@ -230,31 +230,31 @@ for i = 1:height(bif)
         else
             existing_dnID = dnID_1d_expand_to_2d(split_cell_idx, 1);
         end
-        
+
         dncell1_ids(i) = existing_dnID;
         fprintf('  Primary downstream: using existing cell_id=%d\n', existing_dnID);
     end
-    
+
     % Handle secondary downstream cell
     dn2_lat = bif.dncell2_lat(i);
     dn2_lon = bif.dncell2_long(i);
   %  if dn2_lon > 180
   %      dn2_lon = dn2_lon - 360;
   %  end
-    
+
     [dn2_cell_idx, dn2_cell_id] = find_closest_cell(lat, lon, ID, dn2_lat, dn2_lon, is_structured);
     if dn2_cell_idx == -1
         error('Could not find secondary downstream cell at lat=%.4f, lon=%.4f', dn2_lat, dn2_lon);
     end
-    
+
     fprintf('  Secondary downstream: lat=%.4f, lon=%.4f -> cell_id=%d\n', dn2_lat, dn2_lon, dn2_cell_id);
     dncell2_ids(i) = dn2_cell_id;
-    
+
     % Set secondary downstream connection and ratios/demands
     if is_structured
         [split_row, split_col] = get_structured_indices(split_cell_idx, nrow, ncol);
         dnID_2d_expand_to_3d(split_row, split_col, 2) = dn2_cell_id;
-        
+
         if is_ibt == 1
             % IBT mode: use demand values
             ibt_demand_3d(split_row, split_col, 1) = 0.0;  % Primary gets remainder
@@ -268,26 +268,26 @@ for i = 1:height(bif)
             % Regular bifurcation: use ratio values
             ratio1 = bif.ratio1(i);
             ratio2 = bif.ratio2(i);
-            
+
             if ratio1 == -9999
                 ratio1 = 0.0;
             end
             if ratio2 == -9999
                 ratio2 = 0.0;
             end
-            
+
             % Validate ratios
             if ratio1 + ratio2 > 1.0001  % Allow small floating point tolerance
                 error('Ratios sum to %.4f > 1.0 for row %d', ratio1 + ratio2, i);
             end
-            
+
             bifurc_ratio_3d(split_row, split_col, 1) = ratio1;
             bifurc_ratio_3d(split_row, split_col, 2) = ratio2;
             fprintf('  Bifurcation ratios: %.3f, %.3f\n', ratio1, ratio2);
         end
     else
         dnID_1d_expand_to_2d(split_cell_idx, 2) = dn2_cell_id;
-        
+
         if is_ibt == 1
             % IBT mode: use demand values
             ibt_demand_2d(split_cell_idx, 1) = 0.0;  % Primary gets remainder
@@ -301,19 +301,19 @@ for i = 1:height(bif)
             % Regular bifurcation: use ratio values
             ratio1 = bif.ratio1(i);
             ratio2 = bif.ratio2(i);
-            
+
             if ratio1 == -9999
                 ratio1 = 0.0;
             end
             if ratio2 == -9999
                 ratio2 = 0.0;
             end
-            
+
             % Validate ratios
             if ratio1 + ratio2 > 1.0001  % Allow small floating point tolerance
                 error('Ratios sum to %.4f > 1.0 for row %d', ratio1 + ratio2, i);
             end
-            
+
             bifurc_ratio_2d(split_cell_idx, 1) = ratio1;
             bifurc_ratio_2d(split_cell_idx, 2) = ratio2;
             fprintf('  Bifurcation ratios: %.3f, %.3f\n', ratio1, ratio2);
@@ -369,7 +369,7 @@ if is_structured
             lat_diff = lat_array(i, j) - target_lat;
             lon_diff = lon_array(i, j) - target_lon;
             distance = sqrt(lat_diff^2 + lon_diff^2);
-            
+
             if distance < min_distance
                 min_distance = distance;
                 cell_idx = (i-1)*ncol + j;  % Convert to 1D index
@@ -385,7 +385,7 @@ else
         lat_diff = lat_array(i) - target_lat;
         lon_diff = lon_array(i) - target_lon;
         distance = sqrt(lat_diff^2 + lon_diff^2);
-        
+
         if distance < min_distance
             min_distance = distance;
             cell_idx = i;

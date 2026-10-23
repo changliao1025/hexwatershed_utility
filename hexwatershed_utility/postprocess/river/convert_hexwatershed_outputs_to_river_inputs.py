@@ -1,17 +1,25 @@
+import json
 import os
 from pathlib import Path
-import json
-import numpy as np
-import netCDF4 as nc
-from pye3sm.mesh.unstructured.e3sm_create_unstructured_domain_file_full import e3sm_create_unstructured_domain_file_full
-from hexwatershed_utility.postprocess.river.get_geometry import get_geometry
-from pyearth.gis.geometry.calculate_polygon_area import calculate_polygon_area
 
-def convert_hexwatershed_json_to_river_parameter_file(sFilename_json_in,
-                                               sFilename_river_parameter_in,
-                                               sFilename_river_parameter_out,
-                                               sFilename_river_domain_out,
-                                               pWidth_in=None, pDepth_in=None):
+import netCDF4 as nc
+import numpy as np
+from pyearth.gis.geometry.calculate_polygon_area import calculate_polygon_area
+from pyesm.mesh.unstructured.esm_create_unstructured_domain_file_full import (
+    esm_create_unstructured_domain_file_full,
+)
+
+from hexwatershed_utility.postprocess.river.get_geometry import get_geometry
+
+
+def convert_hexwatershed_json_to_river_parameter_file(
+    sFilename_json_in,
+    sFilename_river_parameter_in,
+    sFilename_river_parameter_out,
+    sFilename_river_domain_out,
+    pWidth_in=None,
+    pDepth_in=None,
+):
     # Resolve relative paths to absolute paths
     if not os.path.isabs(sFilename_json_in):
         sFilename_json_in = os.path.abspath(sFilename_json_in)
@@ -65,22 +73,22 @@ def convert_hexwatershed_json_to_river_parameter_file(sFilename_json_in,
             aID.append(lID)
             lID = lID + 1
 
-            #aArea.append(dArea)
-            aLongitude.append(float(pcell['dLongitude_center_degree']))
-            aLatitude.append(float(pcell['dLatitude_center_degree']))
-            aCellID.append(int(pcell['lCellID']))
-            aCellID_downslope.append(int(pcell['lCellID_downslope']))
-            aElevation.append(float(pcell['dElevation']))
-            dDrainage = float(pcell['dDrainage_area'])
+            # aArea.append(dArea)
+            aLongitude.append(float(pcell["dLongitude_center_degree"]))
+            aLatitude.append(float(pcell["dLatitude_center_degree"]))
+            aCellID.append(int(pcell["lCellID"]))
+            aCellID_downslope.append(int(pcell["lCellID_downslope"]))
+            aElevation.append(float(pcell["dElevation"]))
+            dDrainage = float(pcell["dDrainage_area"])
             aDrainage.append(dDrainage)
             # qa for slope
-            dSlope = float(pcell['dSlope_between'])
+            dSlope = float(pcell["dSlope_between"])
             if dSlope < 0.0005:
                 dSlope = 0.0005
                 pass
 
             aSlope.append(dSlope)
-            dFlowline_length = float(pcell['dLength_flowline'])
+            dFlowline_length = float(pcell["dLength_flowline"])
             aFlowline_length.append(dFlowline_length)
             aDomainfrac.append(1.0)
             aFdir.append(1)
@@ -88,23 +96,23 @@ def convert_hexwatershed_json_to_river_parameter_file(sFilename_json_in,
             aNh.append(0.1)
             aNr.append(0.05)
             aNt.append(0.05)
-            aTwid.append(10.0) #this parameter should be updated
+            aTwid.append(10.0)  # this parameter should be updated
 
-            dummy_vertex = pcell['vVertex']
+            dummy_vertex = pcell["vVertex"]
             aVertex_lon = np.full(9, -9999, float)
             aVertex_lat = np.full(9, -9999, float)
             nVertex = len(dummy_vertex)
             for j in range(nVertex):
-                aVertex_lon[j] = dummy_vertex[j]['dLongitude_degree']
-                aVertex_lat[j] = dummy_vertex[j]['dLatitude_degree']
+                aVertex_lon[j] = dummy_vertex[j]["dLongitude_degree"]
+                aVertex_lat[j] = dummy_vertex[j]["dLatitude_degree"]
 
             aLonV_region.append(aVertex_lon)
             aLatV_region.append(aVertex_lat)
-            dArea = float(pcell['dArea'])
-            aLongitude_dummy = aVertex_lon[np.where(aVertex_lon !=-9999)]
-            aLatitude_dummy = aVertex_lat[np.where(aVertex_lat !=-9999)]
-            #dArea = calculate_polygon_area(aLongitude_dummy, aLatitude_dummy)
-            #float(pcell['dArea'])
+            dArea = float(pcell["dArea"])
+            aLongitude_dummy = aVertex_lon[np.where(aVertex_lon != -9999)]
+            aLatitude_dummy = aVertex_lat[np.where(aVertex_lat != -9999)]
+            # dArea = calculate_polygon_area(aLongitude_dummy, aLatitude_dummy)
+            # float(pcell['dArea'])
             aArea.append(dArea)
             # dGxr = dArea / dFlowline_length
             dGxr = dFlowline_length / dArea
@@ -120,7 +128,14 @@ def convert_hexwatershed_json_to_river_parameter_file(sFilename_json_in,
     aArea = np.array(aArea).reshape(ncell)
 
     aRwid, aRdep, aFlood_2yr_out = get_geometry(
-        aLongitude_in, aLatitude_in, aCellID, aCellID_downslope, aArea, pWidth_in=pWidth_in, pDepth_in=pDepth_in)
+        aLongitude_in,
+        aLatitude_in,
+        aCellID,
+        aCellID_downslope,
+        aArea,
+        pWidth_in=pWidth_in,
+        pDepth_in=pDepth_in,
+    )
 
     # convert to numpy array
 
@@ -132,16 +147,12 @@ def convert_hexwatershed_json_to_river_parameter_file(sFilename_json_in,
     aLonV_region = np.array(aLonV_region)  # .T
     aLatV_region = np.array(aLatV_region)  # .T
 
-    for i in range(nCell):
-        lCellID = aCellID[i]
-        lCellID_downslope = aCellID_downslope[i]
-        if lCellID_downslope == -1:
-            aDnID.append(-9999)
-        else:
-            dummy_index = np.where(aCellID == lCellID_downslope)
-            # index = np.reshape(dummy_index, 1)[0]
-            dnID = aID[dummy_index[0]]
-            aDnID.append(dnID[0])
+    # Build cell ID to index mapping for O(1) lookups instead of O(N) np.where scans
+    cell_id_to_id = {int(cid): int(aid) for cid, aid in zip(aCellID, aID)}
+    aDnID = [
+        cell_id_to_id.get(int(down_id), -9999) if down_id != -1 else -9999
+        for down_id in aCellID_downslope
+    ]
 
     aDnID = np.array(aDnID)
     aDomainfrac = np.array(aDomainfrac)
@@ -162,28 +173,109 @@ def convert_hexwatershed_json_to_river_parameter_file(sFilename_json_in,
     aRdep = np.array(aRdep)
     aRwid = np.array(aRwid)
     aTwid = np.array(aTwid) * 5
-    #fix tributary width
+    # fix tributary width
 
     aRslp = aHslp
     aTslp = aHslp
 
-    # open mpas netcdf
-    pDatasets_in = nc.Dataset(sFilename_river_parameter_in)
-    netcdf_format = pDatasets_in.file_format
-    # output file
-    pDatasets_out = nc.Dataset(
-        sFilename_river_parameter_out, "w", format=netcdf_format)
-    aVariable = ['area', 'areaTotal', 'areaTotal2', 'dnID', 'domainfrac',
-                 'fdir', 'frac', 'gxr', 'hslp', 'CellID', 'ID',
-                 'lat', 'latixy', 'lon', 'longxy', 'nh', 'nr', 'nt',
-                 'rdep', 'rlen', 'rslp', 'rwid', 'rwid0', 'tslp', 'twid']
+    # open mpas netcdf to get format
+    with nc.Dataset(sFilename_river_parameter_in, "r") as pDatasets_in:
+        netcdf_format = pDatasets_in.file_format
 
-    aUnit = ['', '', '', '', '', '', '', '', '', '', '', '', '', '',
-             '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '']
-    aLongName = ['', '', '', '', '', '', '', '', '', '', '', '', '', '',
-                 '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '']
+    aVariable = [
+        "area",
+        "areaTotal",
+        "areaTotal2",
+        "dnID",
+        "domainfrac",
+        "fdir",
+        "frac",
+        "gxr",
+        "hslp",
+        "CellID",
+        "ID",
+        "lat",
+        "latixy",
+        "lon",
+        "longxy",
+        "nh",
+        "nr",
+        "nt",
+        "rdep",
+        "rlen",
+        "rslp",
+        "rwid",
+        "rwid0",
+        "tslp",
+        "twid",
+    ]
 
-    pDatasets_out.createDimension('gridcell', nCell)
+    aUnit = [
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+    ]
+    aLongName = [
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+    ]
+
+    pDatasets_out.createDimension("gridcell", nCell)
 
     # write data out
 
@@ -217,19 +309,18 @@ def convert_hexwatershed_json_to_river_parameter_file(sFilename_json_in,
 
     # now export
     nVariable = len(aVariable)
-    aDimension_list = list()
+    aDimension_tuple = ("gridcell",)
 
-    aDimension_list.append('gridcell')
-    aDimension_tuple = tuple(aDimension_list)
-    for i in range(nVariable):
-        pVar = pDatasets_out.createVariable(
-            aVariable[i], float, aDimension_tuple, fill_value=-9999)
-        aData_variable = aData_out[i]
-        print(aVariable[i])
-        pVar[:] = aData_variable
-        pVar.setncatts({'_FillValue': -9999})
-        pVar.setncatts({'unit':  aUnit[i]})
-        pVar.setncatts({'long name': aLongName[i]})
+    with nc.Dataset(sFilename_river_parameter_out, "w", format=netcdf_format) as pDatasets_out:
+        for i in range(nVariable):
+            pVar = pDatasets_out.createVariable(
+                aVariable[i], float, aDimension_tuple, fill_value=-9999
+            )
+            aData_variable = aData_out[i]
+            pVar[:] = aData_variable
+            pVar.setncatts({"_FillValue": -9999})
+            pVar.setncatts({"unit": aUnit[i]})
+            pVar.setncatts({"long name": aLongName[i]})
 
     # create domain file
 
@@ -248,18 +339,13 @@ def convert_hexwatershed_json_to_river_parameter_file(sFilename_json_in,
     aLonV_region.shape = (nrow, 1, nvertex)
     aLatV_region.shape = (nrow, 1, nvertex)
 
-    e3sm_create_unstructured_domain_file_full(aLon, aLat, aLonV_region, aLatV_region,
-                                              sFilename_river_domain_out, aArea_in=aArea)
-    # two options: simple ; non-simple
+    esm_create_unstructured_domain_file_full(
+        aLon,
+        aLat,
+        aLonV_region,
+        aLatV_region,
+        sFilename_river_domain_out,
+        aArea_in=aArea,
+    )
 
-    # e3sm_create_unstructured_domain_file_simple(aLon, aLat,  aLonV_region, aLatV_region,
-    #                          sFilename_river_domain_out, aArea_in = aArea )
-
-    sFolder = os.path.dirname(sFilename_river_domain_out)
-    sBasename = Path(sFilename_river_domain_out).stem
-
-    sFilename_river_domain_out = os.path.join(
-        sFolder, sFilename_river_domain_out)
-
-    return
-
+    return sFilename_river_parameter_out, sFilename_river_domain_out

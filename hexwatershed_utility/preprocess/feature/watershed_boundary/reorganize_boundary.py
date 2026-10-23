@@ -1,5 +1,6 @@
 from osgeo import gdal, ogr, osr
 
+
 def reorganize_boundary(aWkt_in, sFilename_out=None):
     """
     Reorganize the watershed boundary WKT by handling overlapping polygons and extracting
@@ -54,7 +55,10 @@ def reorganize_boundary(aWkt_in, sFilename_out=None):
 
     if sFilename_out is not None:
         # Save to file if output filename is provided
-        from pyearth.gis.gdal.gdal_vector_format_support import get_vector_driver_from_filename
+        from pyearth.gis.gdal.gdal_vector_format_support import (
+            get_vector_driver_from_filename,
+        )
+
         pDriver = get_vector_driver_from_filename(sFilename_out)
         if pDriver is None:
             raise ValueError(f"Could not get driver for file: {sFilename_out}")
@@ -63,9 +67,13 @@ def reorganize_boundary(aWkt_in, sFilename_out=None):
         if pDataset_out is None:
             raise ValueError(f"Could not create output dataset: {sFilename_out}")
 
-        pLayer_out = pDataset_out.CreateLayer("watershed_boundary", geom_type=ogr.wkbMultiPolygon, srs=oSRS)
+        pLayer_out = pDataset_out.CreateLayer(
+            "watershed_boundary", geom_type=ogr.wkbMultiPolygon, srs=oSRS
+        )
         if pLayer_out is None:
-            raise ValueError(f"Could not create layer in output dataset: {sFilename_out}")
+            raise ValueError(
+                f"Could not create layer in output dataset: {sFilename_out}"
+            )
 
         pFeature_out = ogr.Feature(pLayer_out.GetLayerDefn())
         pGeometry_out = ogr.CreateGeometryFromWkt(sWkt_out)
@@ -74,7 +82,9 @@ def reorganize_boundary(aWkt_in, sFilename_out=None):
 
         pFeature_out.SetGeometry(pGeometry_out)
         if pLayer_out.CreateFeature(pFeature_out) != ogr.OGRERR_NONE:
-            raise ValueError(f"Could not create feature in output layer: {sFilename_out}")
+            raise ValueError(
+                f"Could not create feature in output layer: {sFilename_out}"
+            )
 
         # Clean up
         pFeature_out = None
@@ -115,8 +125,9 @@ def _extract_minimal_polygons(aPolygons):
                     break
 
                 # Also check if they have the same area and centroid (for numerical precision issues)
-                if (abs(oCurrentPoly.GetArea() - oUniquePoly.GetArea()) < 1e-10 and
-                    oCurrentPoly.Centroid().Equals(oUniquePoly.Centroid())):
+                if abs(
+                    oCurrentPoly.GetArea() - oUniquePoly.GetArea()
+                ) < 1e-10 and oCurrentPoly.Centroid().Equals(oUniquePoly.Centroid()):
                     bIsDuplicate = True
                     break
 
@@ -129,4 +140,3 @@ def _extract_minimal_polygons(aPolygons):
             aUniquePolygons.append(oCurrentPoly.Clone())
 
     return aUniquePolygons
-

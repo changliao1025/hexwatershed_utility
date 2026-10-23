@@ -1,5 +1,7 @@
 import os
+
 from osgeo import ogr
+
 
 def get_outlet_location(sFilename_simplified_flowline_in):
     """
@@ -28,17 +30,20 @@ def get_outlet_location(sFilename_simplified_flowline_in):
     try:
         pLayer = pDataset.GetLayer(0)
         if pLayer is None:
-            raise ValueError(f"Could not get layer from {sFilename_simplified_flowline_in}")
+            raise ValueError(
+                f"Could not get layer from {sFilename_simplified_flowline_in}"
+            )
 
         nFeature_count = pLayer.GetFeatureCount()
         if nFeature_count == 0:
             raise ValueError(f"No features found in {sFilename_simplified_flowline_in}")
 
-
         # Simple case: return last point of first feature
         pFeature = pLayer.GetFeature(0)
         if pFeature is None:
-            raise ValueError(f"Could not get first feature from {sFilename_simplified_flowline_in}")
+            raise ValueError(
+                f"Could not get first feature from {sFilename_simplified_flowline_in}"
+            )
         pGeometry = pFeature.GetGeometryRef()
         if pGeometry is None or pGeometry.GetPointCount() == 0:
             raise ValueError(f"First feature has no valid geometry")

@@ -1,4 +1,6 @@
 import numpy as np
+
+
 def calculate_nse(observed, simulated):
     """
     Calculate the Nash–Sutcliffe model efficiency coefficient (NSE) with consideration of missing values.

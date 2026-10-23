@@ -12,13 +12,16 @@ Features:
 - Support for multiple output formats
 """
 
-import os,sys
 import logging
-import traceback
 import math
-from typing import Optional, List, Tuple, Union, Dict, Any
+import os
+import sys
+import traceback
+from typing import Any, Dict, List, Optional, Tuple, Union
+
 import numpy as np
 from osgeo import gdal, ogr
+
 gdal.UseExceptions()
 
 # Set up logging
@@ -29,18 +32,24 @@ CRS = "EPSG:4326"
 DEFAULT_EARTH_RADIUS = 1.0
 DEFAULT_CAMERA_DISTANCE_MULTIPLIER = 3.0
 DEFAULT_ZOOM_FACTOR = 0.7
-VALID_ANIMATION_FORMATS = ['mp4', 'gif', 'avi']
-VALID_IMAGE_FORMATS = ['.png', '.jpg', '.jpeg', '.svg', '.tif', '.tiff']
-COORDINATE_BOUNDS = {'longitude': (-180, 180), 'latitude': (-90, 90)}
+VALID_ANIMATION_FORMATS = ["mp4", "gif", "avi"]
+VALID_IMAGE_FORMATS = [".png", ".jpg", ".jpeg", ".svg", ".tif", ".tiff"]
+COORDINATE_BOUNDS = {"longitude": (-180, 180), "latitude": (-90, 90)}
 
-from pyearthviz3d.geovista.map_single_frame import map_single_frame
 from pyearthviz3d.geovista.animate_rotating_frames import animate_rotating_frames
-from pyearthviz3d.geovista.utility import VisualizationConfig, AnimationConfig, ScalarBarConfig
+from pyearthviz3d.geovista.map_single_frame import map_single_frame
+from pyearthviz3d.geovista.utility import (
+    AnimationConfig,
+    ScalarBarConfig,
+    VisualizationConfig,
+)
 
-def map_mpas_mesh_on_sphere(sFilename_mpas_mesh_in: str,
-                          sFilename_out: Optional[str] = None,
-    **kwargs,) -> bool:
 
+def map_mpas_mesh_on_sphere(
+    sFilename_mpas_mesh_in: str,
+    sFilename_out: Optional[str] = None,
+    **kwargs,
+) -> bool:
     """
     Visualize the source mesh topology using GeoVista 3D globe rendering.
 
@@ -87,7 +96,7 @@ def map_mpas_mesh_on_sphere(sFilename_mpas_mesh_in: str,
         "iFlag_show_graticule": True,
         "sColormap": "viridis",
         "sCoastline_color": "black",
-        "sBase_layer": None, #'natural_earth_1',
+        "sBase_layer": None,  #'natural_earth_1',
         "dCoastline_width": 1.0,
         "iFlag_wireframe_only": False,
         "iFlag_create_animation": False,
@@ -127,6 +136,7 @@ def map_mpas_mesh_on_sphere(sFilename_mpas_mesh_in: str,
     sVariable_to_plot = merged_params["sVariable_to_plot"]
     # read the mpas mesh file
     import netCDF4 as nc
+
     # Define a base window size and font size
     base_window_size = 1200
     base_font_size = 8
@@ -139,41 +149,45 @@ def map_mpas_mesh_on_sphere(sFilename_mpas_mesh_in: str,
     scaled_font_size = int(base_font_size * scaling_factor)
     scaled_line_width = base_line_width * scaling_factor
     try:
-        pDataset = nc.Dataset(sFilename_mpas_mesh_in, 'r')
+        pDataset = nc.Dataset(sFilename_mpas_mesh_in, "r")
     except Exception as e:
-        logger.error(f'Could not open MPAS mesh file {sFilename_mpas_mesh_in}: {e}')
+        logger.error(f"Could not open MPAS mesh file {sFilename_mpas_mesh_in}: {e}")
         return False
     try:
-        #read mesh lon and lat, convert to degrees
-        aVertex_longititude = pDataset.variables['lonVertex'][:] * (180.0 / np.pi)
-        #fix range of longitudes if necessary from [0, 360] to [-180, 180]
-        aVertex_longititude = np.where(aVertex_longititude > 180, aVertex_longititude - 360, aVertex_longititude)
-        aVertex_latitude = pDataset.variables['latVertex'][:] * (180.0 / np.pi)
-        aConnectivity = pDataset.variables['verticesOnCell'][:]
-        aCellID = pDataset.variables['indexToCellID'][:]
+        # read mesh lon and lat, convert to degrees
+        aVertex_longititude = pDataset.variables["lonVertex"][:] * (180.0 / np.pi)
+        # fix range of longitudes if necessary from [0, 360] to [-180, 180]
+        aVertex_longititude = np.where(
+            aVertex_longititude > 180, aVertex_longititude - 360, aVertex_longititude
+        )
+        aVertex_latitude = pDataset.variables["latVertex"][:] * (180.0 / np.pi)
+        aConnectivity = pDataset.variables["verticesOnCell"][:]
+        aCellID = pDataset.variables["indexToCellID"][:]
 
     except Exception as e:
-        logger.error(f'Error reading mesh variables from {sFilename_mpas_mesh_in}: {e}')
+        logger.error(f"Error reading mesh variables from {sFilename_mpas_mesh_in}: {e}")
         pDataset.close()
         return False
 
     try:
         # Import and setup GeoVista
         import geovista as gv
+
         # Validate connectivity array structure
         if aConnectivity.ndim != 2:
-            logger.error(f'Connectivity array must be 2D, got {aConnectivity.ndim}D')
+            logger.error(f"Connectivity array must be 2D, got {aConnectivity.ndim}D")
             return False
 
         # Convert 1-based connectivity indices to 0-based (MPAS uses 1-based indexing)
         # Invalid vertices are marked with fill_value (usually 0)
         fill_value = 0
-        aConnectivity_0based = np.where(aConnectivity > fill_value, aConnectivity - 1, -1)
+        aConnectivity_0based = np.where(
+            aConnectivity > fill_value, aConnectivity - 1, -1
+        )
 
         # Create masked connectivity array (mask invalid indices)
         connectivity_masked = np.ma.masked_where(
-            aConnectivity_0based < 0,
-            aConnectivity_0based
+            aConnectivity_0based < 0, aConnectivity_0based
         )
 
         # Validate connectivity indices (after conversion to 0-based)
@@ -181,16 +195,18 @@ def map_mpas_mesh_on_sphere(sFilename_mpas_mesh_in: str,
         if len(valid_connectivity) > 0:
             max_vertex_idx = len(aVertex_longititude) - 1
             if np.max(valid_connectivity) > max_vertex_idx:
-                logger.error(f'Connectivity contains invalid vertex index: '
-                           f'max={np.max(valid_connectivity)}, vertices={len(aVertex_longititude)}')
+                logger.error(
+                    f"Connectivity contains invalid vertex index: "
+                    f"max={np.max(valid_connectivity)}, vertices={len(aVertex_longititude)}"
+                )
                 return False
 
         # Transform to GeoVista unstructured mesh
         pMesh = gv.Transform.from_unstructured(
-             aVertex_longititude,
-             aVertex_latitude,
+            aVertex_longititude,
+            aVertex_latitude,
             connectivity=connectivity_masked,
-            crs=CRS
+            crs=CRS,
         )
 
         aValid_cell_indices = np.arange(len(aCellID))
@@ -199,12 +215,16 @@ def map_mpas_mesh_on_sphere(sFilename_mpas_mesh_in: str,
             try:
                 variable_data = pDataset.variables[sVariable_to_plot][:]
                 if variable_data.shape[0] != len(aCellID):
-                    logger.error(f'Variable {sVariable_to_plot} length does not match number of cells')
+                    logger.error(
+                        f"Variable {sVariable_to_plot} length does not match number of cells"
+                    )
                     return False
                 pMesh.cell_data[sVariable_to_plot] = np.sqrt(variable_data)
                 sScalar = sVariable_to_plot
             except Exception as e:
-                logger.error(f'Error reading variable {sVariable_to_plot} from dataset: {e}')
+                logger.error(
+                    f"Error reading variable {sVariable_to_plot} from dataset: {e}"
+                )
                 return False
         else:
             sScalar = "Cell ID"
@@ -238,14 +258,14 @@ def map_mpas_mesh_on_sphere(sFilename_mpas_mesh_in: str,
             else None
         )
         scalar_config = ScalarBarConfig(
-                    title=sScalar,
-                    title_font_size=scaled_font_size,
-                    label_font_size=scaled_font_size,
-                    position_x=0.8,
-                    position_y=0.25,
-                    orientation="vertical",
-                    n_labels=5,
-                )
+            title=sScalar,
+            title_font_size=scaled_font_size,
+            label_font_size=scaled_font_size,
+            position_x=0.8,
+            position_y=0.25,
+            orientation="vertical",
+            n_labels=5,
+        )
 
         config_colorbar = scalar_config if sVariable_to_plot is not None else None
 
@@ -265,7 +285,7 @@ def map_mpas_mesh_on_sphere(sFilename_mpas_mesh_in: str,
                 aValid_cell_indices,
                 config_static,
                 config_anima,
-                style = style,
+                style=style,
                 sFilename_out=sFilename_out,
                 scalar_config=config_colorbar,
             )
@@ -274,8 +294,8 @@ def map_mpas_mesh_on_sphere(sFilename_mpas_mesh_in: str,
                 pMesh,
                 aValid_cell_indices,
                 config_static,
-                sScalar = sScalar,
-                style = style,
+                sScalar=sScalar,
+                style=style,
                 sFilename_out=sFilename_out,
                 scalar_config=config_colorbar,
             )
@@ -283,14 +303,14 @@ def map_mpas_mesh_on_sphere(sFilename_mpas_mesh_in: str,
         return True
 
     except ImportError as e:
-        logger.error('GeoVista library not available. Install with: pip install geovista')
-        logger.error(f'Import error: {e}')
+        logger.error(
+            "GeoVista library not available. Install with: pip install geovista"
+        )
+        logger.error(f"Import error: {e}")
         return False
 
     except Exception as e:
-        logger.error(f'Unexpected error during mesh visualization: {e}')
-        logger.error(f'Error type: {type(e).__name__}')
-        logger.error(f'Traceback: {traceback.format_exc()}')
+        logger.error(f"Unexpected error during mesh visualization: {e}")
+        logger.error(f"Error type: {type(e).__name__}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
         return False
-
-

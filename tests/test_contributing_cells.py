@@ -1,8 +1,10 @@
 import unittest
+
 import numpy as np
+
 from hexwatershed_utility.postprocess.river.find_contributing_cells import (
-    find_contributing_cells,
     build_contributing_cells_all,
+    find_contributing_cells,
 )
 
 

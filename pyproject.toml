@@ -27,37 +27,45 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Hydrology",
 ]
 keywords = ["mesh", "GIS", "hydrology", "watershed", "HexWatershed", "MPAS", "E3SM", "MOSART", "ELM"]
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 dependencies = [
-    "numpy>=1.20.0",
-    "netCDF4>=1.5.0",
-    "shapely>=1.8.0",
-    "requests",
+    "numpy>=1.22.0",
+    "netCDF4>=1.5.8",
+    "shapely>=2.0.0",
+    "pandas>=1.5.0",
+    "scipy>=1.9.0",
+    "rtree>=1.0.0",
+    "requests>=2.28.0",
 ]
 
 [project.optional-dependencies]
+geo = [
+    "gdal>=3.4.0",
+]
 viz = [
     "matplotlib>=3.5.0",
-    "cartopy>=0.20.0",
+    "cartopy>=0.21.0",
     "pyearthviz>=0.1.1",
 ]
 viz3d = [
     "pyearthviz3d>=0.1.1",
+    "geovista>=0.4.0",
 ]
 dev = [
-    "pytest>=7.0",
-    "pytest-cov>=4.0",
-    "black>=23.0",
-    "flake8>=6.0",
-    "mypy>=1.0",
+    "pytest>=7.4",
+    "pytest-cov>=4.1",
+    "black>=24.0",
+    "flake8>=6.1",
+    "isort>=5.12",
+    "mypy>=1.5",
 ]
 docs = [
-    "sphinx>=5.0",
-    "sphinx-rtd-theme>=1.0",
-    "myst-parser>=1.0",
+    "sphinx>=7.0",
+    "sphinx-rtd-theme>=2.0",
+    "myst-parser>=2.0",
 ]
 all = [
-    "hexwatershed_utility[viz,viz3d,dev,docs]",
+    "hexwatershed_utility[geo,viz,viz3d,dev,docs]",
 ]
 
 [project.urls]
@@ -76,7 +84,7 @@ hexwatershed_utility = ["py.typed"]
 
 [tool.black]
 line-length = 100
-target-version = ["py38", "py39", "py310", "py311"]
+target-version = ["py39", "py310", "py311", "py312"]
 include = '\.pyi?$'
 extend-exclude = '''
 /(
@@ -91,6 +99,11 @@ extend-exclude = '''
   | dist
 )/
 '''
+
+[tool.isort]
+profile = "black"
+line_length = 100
+multi_line_output = 3
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

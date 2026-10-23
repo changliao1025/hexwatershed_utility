@@ -1,21 +1,48 @@
+import logging
+import os
 
-import os, sys, platform
+logger = logging.getLogger(__name__)
 
-from pyearthviz.map.vector.map_vector_polyline_file import map_vector_polyline_file
-sPlatform_os = platform.system()
 
-if sPlatform_os == 'Windows':
-    sPath  = 'C:\\workspace\\python\\hexwatershed_utility\\hexwatershed_utility'
-    sys.path.append(os.path.dirname(sPath))
+def map_flow_direction(
+    sFilename_polyline_in: str,
+    sFilename_output_in: str = "mpas_flow_direction_map.png",
+    iFlag_global_in: int = 1,
+) -> str:
+    """
+    Render 2D map of flow direction polylines.
 
-else:
-    #macOS
-    if sPlatform_os == 'Darwin':
-        sFilename_source_mesh = '/Users/liao313/scratch/04model/pyhexwatershed/global/pyflowline20250927006//mpas.geojson' #use the L10-100 test mesh
-        sFilename_polyline_in = '/Users/liao313/scratch/04model/pyhexwatershed/global/pyhexwatershed20250928001/hexwatershed/mpas_flow_direction.geojson'
-    else:
-        #linux
-        pass
+    Parameters
+    ----------
+    sFilename_polyline_in : str
+        Input GeoJSON polyline file of flow directions.
+    sFilename_output_in : str, default='mpas_flow_direction_map.png'
+        Output PNG image filename.
+    iFlag_global_in : int, default=1
+        Flag for global map projection.
 
-map_vector_polyline_file(sFilename_polyline_in,  iFlag_global_in=1,
-                         sFilename_output_in='mpas_flow_direction_map.png')
+    Returns
+    -------
+    str
+        Path to output PNG.
+    """
+    if not os.path.exists(sFilename_polyline_in):
+        raise FileNotFoundError(f"Polyline file not found: {sFilename_polyline_in}")
+
+    from pyearthviz.map.vector.map_vector_polyline_file import map_vector_polyline_file
+
+    map_vector_polyline_file(
+        sFilename_polyline_in,
+        iFlag_global_in=iFlag_global_in,
+        sFilename_output_in=sFilename_output_in,
+    )
+
+    logger.info("Generated flow direction map: %s", sFilename_output_in)
+    return sFilename_output_in
+
+
+if __name__ == "__main__":
+    import sys
+    if len(sys.argv) > 1:
+        out = sys.argv[2] if len(sys.argv) > 2 else "mpas_flow_direction_map.png"
+        map_flow_direction(sys.argv[1], out)

@@ -1,6 +1,8 @@
 import json
+import logging
 import os
 from pathlib import Path
+from typing import Optional, Tuple
 
 import netCDF4 as nc
 import numpy as np
@@ -11,15 +13,40 @@ from pyesm.mesh.unstructured.esm_create_unstructured_domain_file_full import (
 
 from hexwatershed_utility.postprocess.river.get_geometry import get_geometry
 
+logger = logging.getLogger(__name__)
+
 
 def convert_hexwatershed_json_to_river_parameter_file(
-    sFilename_json_in,
-    sFilename_river_parameter_in,
-    sFilename_river_parameter_out,
-    sFilename_river_domain_out,
-    pWidth_in=None,
-    pDepth_in=None,
-):
+    sFilename_json_in: str,
+    sFilename_river_parameter_in: str,
+    sFilename_river_parameter_out: str,
+    sFilename_river_domain_out: str,
+    pWidth_in: Optional[float] = None,
+    pDepth_in: Optional[float] = None,
+) -> Tuple[str, str]:
+    """
+    Convert HexWatershed JSON outputs to river model (MOSART) parameter and domain NetCDF files.
+
+    Parameters
+    ----------
+    sFilename_json_in : str
+        Input HexWatershed JSON file.
+    sFilename_river_parameter_in : str
+        Template river parameter NetCDF file (for format compatibility).
+    sFilename_river_parameter_out : str
+        Target river parameter NetCDF output path.
+    sFilename_river_domain_out : str
+        Target river domain NetCDF output path.
+    pWidth_in : float, optional
+        River width scaling parameter.
+    pDepth_in : float, optional
+        River depth scaling parameter.
+
+    Returns
+    -------
+    Tuple[str, str]
+        (path_to_parameter_file, path_to_domain_file)
+    """
     # Resolve relative paths to absolute paths
     if not os.path.isabs(sFilename_json_in):
         sFilename_json_in = os.path.abspath(sFilename_json_in)
@@ -275,43 +302,41 @@ def convert_hexwatershed_json_to_river_parameter_file(
         "",
     ]
 
-    pDatasets_out.createDimension("gridcell", nCell)
-
     # write data out
-
-    aData_out = list()
-    aData_out.append(aArea)
-    aData_out.append(aAreaTotal)
-    aData_out.append(aAreaTotal2)
-    aData_out.append(aDnID)
-    aData_out.append(aDomainfrac)
-    aData_out.append(aFdir)
-    aData_out.append(aFdir)
-    aData_out.append(aGxr)
-    aData_out.append(aHslp)
-    aData_out.append(aCellID)  # global cell ID
-    aData_out.append(aID)
-    aData_out.append(aLat)
-    aData_out.append(aLatixy)
-    aData_out.append(aLon)
-    aData_out.append(aLongxy)
-    aData_out.append(aNh)
-    aData_out.append(aNr)
-    aData_out.append(aNt)
-    aData_out.append(aRdep)
-    aData_out.append(aRlen)
-    aData_out.append(aRslp)
-    aData_out.append(aRwid)
-    aRwid0 = aRwid * 5.0
-    aData_out.append(aRwid0)
-    aData_out.append(aTslp)
-    aData_out.append(aTwid)
+    aData_out = [
+        aArea,
+        aAreaTotal,
+        aAreaTotal2,
+        aDnID,
+        aDomainfrac,
+        aFdir,
+        aFdir,
+        aGxr,
+        aHslp,
+        aCellID,
+        aID,
+        aLat,
+        aLatixy,
+        aLon,
+        aLongxy,
+        aNh,
+        aNr,
+        aNt,
+        aRdep,
+        aRlen,
+        aRslp,
+        aRwid,
+        aRwid * 5.0,
+        aTslp,
+        aTwid,
+    ]
 
     # now export
     nVariable = len(aVariable)
     aDimension_tuple = ("gridcell",)
 
     with nc.Dataset(sFilename_river_parameter_out, "w", format=netcdf_format) as pDatasets_out:
+        pDatasets_out.createDimension("gridcell", nCell)
         for i in range(nVariable):
             pVar = pDatasets_out.createVariable(
                 aVariable[i], float, aDimension_tuple, fill_value=-9999

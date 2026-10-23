@@ -1,5 +1,6 @@
+import logging
 import os
-import sys
+from typing import Optional, Sequence, Tuple
 
 import numpy as np
 
@@ -7,19 +8,21 @@ from hexwatershed_utility.postprocess.river.find_contributing_cells import (
     build_contributing_cells_all,
 )
 
+logger = logging.getLogger(__name__)
+
 
 def get_geometry(
-    aLongitude_in,
-    aLatitude_in,
-    aCellID,
-    aCellID_downslope,
-    aArea,
-    pWidth_in=None,
-    pDepth_in=None,
-    iFlag_read_runoff=0,
-    nChunk_size=1000,
-    sFilename_runoff=None,
-):
+    aLongitude_in: Sequence[float],
+    aLatitude_in: Sequence[float],
+    aCellID: Sequence[int],
+    aCellID_downslope: Sequence[int],
+    aArea: Sequence[float],
+    pWidth_in: Optional[float] = None,
+    pDepth_in: Optional[float] = None,
+    iFlag_read_runoff: int = 0,
+    nChunk_size: int = 1000,
+    sFilename_runoff: Optional[str] = None,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Retrieve river width, depth and 2-year flood discharge for each mesh cell.
 
@@ -48,7 +51,10 @@ def get_geometry(
     Returns:
         tuple: (aWidth_out, aDepth_out, aFlood_2yr_out)
     """
-    nCell = len(aLongitude_in)
+    aLongitude_arr = np.asarray(aLongitude_in, dtype=np.float64)
+    aLatitude_arr = np.asarray(aLatitude_in, dtype=np.float64)
+    aArea_arr = np.asarray(aArea, dtype=np.float64)
+    nCell = len(aLongitude_arr)
 
     pWidth = 7.2 if pWidth_in is None else pWidth_in
     pDepth = 0.27 if pDepth_in is None else pDepth_in
@@ -56,10 +62,9 @@ def get_geometry(
     # ------------------------------------------------------------------
     # 1. Build contributing-cell lists for ALL cells in O(N)
     # ------------------------------------------------------------------
-    print("Building contributing-cell lists (O(N) topological sort)...")
-    sys.stdout.flush()
+    logger.info("Building contributing-cell lists (O(N) topological sort)...")
     aCellIndex_contribution_all = build_contributing_cells_all(aCellID, aCellID_downslope)
-    print(f"  Done. {nCell} cells processed.\n")
+    logger.info(f"  Done. {nCell} cells processed.\n")
 
     # ------------------------------------------------------------------
     # 2. Runoff path
@@ -79,8 +84,7 @@ def get_geometry(
         # For each mesh cell find the (row, col) of the closest runoff grid point.
         # Processing in batches of nChunk_size avoids allocating an
         # (N × nrow × ncol) array all at once.
-        print("Building nearest-neighbour mapping (vectorised, batched)...")
-        sys.stdout.flush()
+        logger.info("Building nearest-neighbour mapping (vectorised, batched)...")
 
         row_idx = np.empty(nCell, dtype=np.int32)
         col_idx = np.empty(nCell, dtype=np.int32)
@@ -90,10 +94,10 @@ def get_geometry(
             i0 = b * nChunk_size
             i1 = min(i0 + nChunk_size, nCell)
             if b % 10 == 0:
-                print(f"  Batch {b+1}/{nBatches}  (cells {i0}–{i1})...")
+                logger.info(f"  Batch {b+1}/{nBatches}  (cells {i0}–{i1})...")
 
-            lon_b = aLongitude_in[i0:i1]  # (B,)
-            lat_b = aLatitude_in[i0:i1]  # (B,)
+            lon_b = aLongitude_arr[i0:i1]  # (B,)
+            lat_b = aLatitude_arr[i0:i1]  # (B,)
 
             # Squared angular distance — sufficient for argmin
             # shapes: (B,1,1) - (1,nrow,ncol) → (B,nrow,ncol)
@@ -105,7 +109,7 @@ def get_geometry(
             row_idx[i0:i1] = flat // ncol
             col_idx[i0:i1] = flat % ncol
 
-        print("  Nearest-neighbour mapping complete.\n")
+        logger.info("  Nearest-neighbour mapping complete.\n")
 
         # --- 2c. Load runoff file once ---
         from pyearth.gis.gdal.read.raster.gdal_read_envi_file import (
@@ -119,15 +123,13 @@ def get_geometry(
             raise FileNotFoundError(f"Runoff data file not found: {sFilename_runoff}")
 
         sFilename = sFilename_runoff
-        print(f"Loading runoff data file: {sFilename}...")
-        sys.stdout.flush()
+        logger.info(f"Loading runoff data file: {sFilename}...")
         dummy0 = gdal_read_envi_file_multiple_band(sFilename)
         aRunoff_source = dummy0[0]  # shape: (nday, nrow, ncol)
 
         # --- 2d. Extract per-cell runoff in one shot ---
         # aRunoff_all[t, i] = runoff at the grid point nearest to cell i on day t
-        print("Extracting per-cell runoff (vectorised)...")
-        sys.stdout.flush()
+        logger.info("Extracting per-cell runoff (vectorised)...")
         aRunoff_all = aRunoff_source[:, row_idx, col_idx]  # (nday, nCell)
         aRunoff_all[aRunoff_all == -9999.0] = 0.0
         del aRunoff_source  # free the large source array
@@ -135,24 +137,22 @@ def get_geometry(
         # --- 2e. Compute discharge for every cell ---
         # Q[t, i] = sum over contributing cells k of (runoff[t,k] * area[k])
         # Unit conversion: mm/day → m³/s  (÷1000 for mm→m, ÷(3*3600) for day→s)
-        print("Computing discharge for all cells...")
-        sys.stdout.flush()
+        logger.info("Computing discharge for all cells...")
         aDischarge = np.zeros((nday, nCell), dtype=np.float64)
         for i in range(nCell):
             if i % 10000 == 0 and i > 0:
-                print(f"  {i}/{nCell} cells...")
+                logger.info(f"  {i}/{nCell} cells...")
             contrib = aCellIndex_contribution_all[i]
             if len(contrib) == 0:
                 continue
             contrib_arr = np.asarray(contrib, dtype=np.int64)
             # (nday, K) * (K,) → sum over K → (nday,)
-            aDischarge[:, i] = np.dot(aRunoff_all[:, contrib_arr], aArea[contrib_arr])
+            aDischarge[:, i] = np.dot(aRunoff_all[:, contrib_arr], aArea_arr[contrib_arr])
 
         aDischarge /= 1000.0 * 3.0 * 3600.0
 
         # --- 2f. Annual maximum flood (AMF) and 2-year return period ---
-        print("Computing AMF and 2-year flood discharge...")
-        sys.stdout.flush()
+        logger.info("Computing AMF and 2-year flood discharge...")
         AMF = np.zeros((nyear, nCell), dtype=np.float64)
         for y in range(nyear):
             AMF[y] = np.max(aDischarge[y * 365 : (y + 1) * 365], axis=0)
@@ -164,15 +164,15 @@ def get_geometry(
         # Simplified path: empirical drainage-area relationship
         # Q_2yr (m³/s) ≈ 0.01 * Area(m²)^0.7
         # ------------------------------------------------------------------
-        print("Skipping runoff data — using simplified area-based geometry...")
-        aFlood_2yr_out = 0.01 * np.power(aArea, 0.7)
+        logger.info("Skipping runoff data — using simplified area-based geometry...")
+        aFlood_2yr_out = 0.01 * np.power(aArea_arr, 0.7)
 
     # ------------------------------------------------------------------
     # 3. Width and depth from power-law scaling
     # ------------------------------------------------------------------
-    print("Computing river width and depth...")
+    logger.info("Computing river width and depth...")
     aWidth_out = pWidth * np.power(aFlood_2yr_out, 0.52)
     aDepth_out = pDepth * np.power(aFlood_2yr_out, 0.31)
 
-    print("Geometry calculation complete!\n")
+    logger.info("Geometry calculation complete!\n")
     return aWidth_out, aDepth_out, aFlood_2yr_out

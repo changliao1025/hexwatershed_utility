@@ -1,4 +1,6 @@
+import logging
 import os
+from typing import Dict
 
 from osgeo import ogr, osr
 from pyearth.gis.gdal.gdal_vector_format_support import get_vector_driver_from_filename
@@ -6,10 +8,15 @@ from pyflowline.classes.vertex import pyvertex
 from pyflowline.formats.read_flowline import read_flowline_geojson
 from rtree.index import Index as RTreeindex
 
+logger = logging.getLogger(__name__)
+
 
 def snap_dams_to_river_networks(
-    sFilename_dam, sFilename_river, sFilename_out, sVariable_drainage="drainage"
-):
+    sFilename_dam: str,
+    sFilename_river: str,
+    sFilename_out: str,
+    sVariable_drainage: str = "drainage",
+) -> Dict[str, str]:
     if not os.path.exists(sFilename_dam):
         raise FileNotFoundError(f"Dam location file does not exist: {sFilename_dam}")
 
@@ -218,11 +225,9 @@ def snap_dams_to_river_networks(
     pDataSource_on.Destroy()
     pDataSource_too_far.Destroy()
 
-    print("Finished!")
-    print(f"Summary:")
-    print(f"  Total dams processed: {nDam}")
-    print(f"  Already on river network (<10m): {nCount_on} -> {sFilename_on}")
-    print(f"  Successfully snapped (< 3km): {nCount_snapped} -> {sFilename_snapped}")
+    logger.info("Total dams processed: %d", nDam)
+    logger.info("Already on river network (<10m): %d -> %s", nCount_on, sFilename_on)
+    logger.info("Successfully snapped (< 3km): %d -> %s", nCount_snapped, sFilename_snapped)
     return {
         "on": sFilename_on,
         "snapped": sFilename_snapped,

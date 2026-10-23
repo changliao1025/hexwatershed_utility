@@ -1,7 +1,9 @@
+from typing import List, Optional, Sequence
+
 from osgeo import ogr, osr
 
 
-def reorganize_boundary(aWkt_in, sFilename_out=None):
+def reorganize_boundary(aWkt_in: Sequence[str], sFilename_out: Optional[str] = None) -> str:
     """
     Reorganize the watershed boundary WKT by handling overlapping polygons and extracting
     minimal polygon components through intersection and difference operations.

@@ -6,12 +6,15 @@ Adds bifurcation_ratio and ibt_demand variables.
 Converted from MATLAB to Python.
 """
 
+import logging
 import shutil
 from typing import Optional, Tuple
 
 import netCDF4 as nc
 import numpy as np
 import pandas as pd
+
+logger = logging.getLogger(__name__)
 
 
 def create_bifurc_netcdf(
@@ -34,7 +37,7 @@ def create_bifurc_netcdf(
     max_downstream : int, default=2
         Maximum number of downstream connections per cell
     """
-    print(f"Reading original NetCDF file: {input_file}")
+    logger.info(f"Reading original NetCDF file: {input_file}")
 
     # Open input file to detect mesh type
     with nc.Dataset(input_file, "r") as ds:
@@ -53,7 +56,7 @@ def create_bifurc_netcdf(
             dnID_2d = ds.variables["dnID"][:]
             nrow, ncol = dnID_2d.shape
             ncells = nrow * ncol
-            print(
+            logger.info(
                 f"Structured mesh detected: dnID dimensions {nrow} x {ncol} (total {ncells} cells)"
             )
         else:
@@ -62,7 +65,7 @@ def create_bifurc_netcdf(
             ncells = len(dnID_1d)
             nrow = ncells  # For unstructured, treat as 1D array
             ncol = 1  # Dummy dimension
-            print(f"Unstructured mesh detected: dnID dimensions {ncells} cells")
+            logger.info(f"Unstructured mesh detected: dnID dimensions {ncells} cells")
 
     # Create arrays with downstream dimension
     if is_structured:
@@ -83,7 +86,7 @@ def create_bifurc_netcdf(
         dnID_1d_expand_to_2d[:, 0] = dnID_1d
 
     # Copy original file to new file
-    print(f"Copying original file to: {output_file}")
+    logger.info(f"Copying original file to: {output_file}")
     shutil.copyfile(input_file, output_file)
 
     # Open the copied file for modification
@@ -142,30 +145,30 @@ def create_bifurc_netcdf(
 
         # Write the data
         if is_structured:
-            print("Writing 3D structured mesh data...")
+            logger.info("Writing 3D structured mesh data...")
             dnID_new[:] = dnID_2d_expand_to_3d
             bifurc_ratio_var[:] = bifurc_ratio_3d
             ibt_demand_var[:] = ibt_demand_3d
-            print(
+            logger.info(
                 "Structured format: dnID(lon,lat,downstream), bifurc_ratio(lon,lat,downstream), ibt_demand(lon,lat,downstream)"
             )
         else:
-            print("Writing 2D unstructured mesh data...")
+            logger.info("Writing 2D unstructured mesh data...")
             dnID_new[:] = dnID_1d_expand_to_2d
             bifurc_ratio_var[:] = bifurc_ratio_2d
             ibt_demand_var[:] = ibt_demand_2d
-            print(
+            logger.info(
                 "Unstructured format: dnID(cells,downstream), bifurc_ratio(cells,downstream), ibt_demand(cells,downstream)"
             )
 
-    print("Successfully created bifurcation NetCDF file!")
-    print('Note: Original dnID preserved as "dnID_original"')
+    logger.info("Successfully created bifurcation NetCDF file!")
+    logger.info('Note: Original dnID preserved as "dnID_original"')
 
     # Process CSV file if provided
     if csv_file is not None:
-        print(f"\nProcessing CSV file: {csv_file}")
+        logger.info(f"\nProcessing CSV file: {csv_file}")
         bif = pd.read_csv(csv_file)
-        print(f"Found {len(bif)} bifurcation/IBT entries")
+        logger.info(f"Found {len(bif)} bifurcation/IBT entries")
 
         # Initialize arrays for cell IDs to be filled in CSV
         cell_ids = np.zeros(len(bif), dtype=np.int32)
@@ -174,7 +177,7 @@ def create_bifurc_netcdf(
 
         # Process each row in the CSV
         for i in range(len(bif)):
-            print(f'\nProcessing row {i}: {bif.iloc[i]["note"]}')
+            logger.info(f'\nProcessing row {i}: {bif.iloc[i]["note"]}')
 
             # Extract data from CSV row
             split_lat = bif.iloc[i]["cell_lat"]
@@ -194,7 +197,7 @@ def create_bifurc_netcdf(
                     f"Could not find cell for splitting point at lat={split_lat:.4f}, lon={split_lon:.4f}"
                 )
 
-            print(
+            logger.info(
                 f"  Split point: lat={split_lat:.4f}, lon={split_lon:.4f} -> cell_id={split_cell_id}"
             )
             cell_ids[i] = split_cell_id
@@ -213,7 +216,7 @@ def create_bifurc_netcdf(
                         f"Could not find primary downstream cell at lat={dn1_lat:.4f}, lon={dn1_lon:.4f}"
                     )
 
-                print(
+                logger.info(
                     f"  Primary downstream: lat={dn1_lat:.4f}, lon={dn1_lon:.4f} -> cell_id={dn1_cell_id}"
                 )
                 dncell1_ids[i] = dn1_cell_id
@@ -233,7 +236,7 @@ def create_bifurc_netcdf(
                     existing_dnID = dnID_1d_expand_to_2d[split_cell_idx, 0]
 
                 dncell1_ids[i] = existing_dnID
-                print(f"  Primary downstream: using existing cell_id={existing_dnID}")
+                logger.info(f"  Primary downstream: using existing cell_id={existing_dnID}")
 
             # Handle secondary downstream cell
             dn2_lat = bif.iloc[i]["dncell2_lat"]
@@ -247,7 +250,7 @@ def create_bifurc_netcdf(
                     f"Could not find secondary downstream cell at lat={dn2_lat:.4f}, lon={dn2_lon:.4f}"
                 )
 
-            print(
+            logger.info(
                 f"  Secondary downstream: lat={dn2_lat:.4f}, lon={dn2_lon:.4f} -> cell_id={dn2_cell_id}"
             )
             dncell2_ids[i] = dn2_cell_id
@@ -264,7 +267,7 @@ def create_bifurc_netcdf(
                     if demand2_val == -9999:
                         demand2_val = 0.0  # Treat missing as 0
                     ibt_demand_3d[split_row, split_col, 1] = demand2_val
-                    print(f"  IBT demand: {demand2_val:.2f} m³/s")
+                    logger.info(f"  IBT demand: {demand2_val:.2f} m³/s")
                 else:
                     # Regular bifurcation: use ratio values
                     ratio1 = bif.iloc[i]["ratio1"]
@@ -281,7 +284,7 @@ def create_bifurc_netcdf(
 
                     bifurc_ratio_3d[split_row, split_col, 0] = ratio1
                     bifurc_ratio_3d[split_row, split_col, 1] = ratio2
-                    print(f"  Bifurcation ratios: {ratio1:.3f}, {ratio2:.3f}")
+                    logger.info(f"  Bifurcation ratios: {ratio1:.3f}, {ratio2:.3f}")
             else:
                 dnID_1d_expand_to_2d[split_cell_idx, 1] = dn2_cell_id
 
@@ -292,7 +295,7 @@ def create_bifurc_netcdf(
                     if demand2_val == -9999:
                         demand2_val = 0.0  # Treat missing as 0
                     ibt_demand_2d[split_cell_idx, 1] = demand2_val
-                    print(f"  IBT demand: {demand2_val:.2f} m³/s")
+                    logger.info(f"  IBT demand: {demand2_val:.2f} m³/s")
                 else:
                     # Regular bifurcation: use ratio values
                     ratio1 = bif.iloc[i]["ratio1"]
@@ -309,10 +312,10 @@ def create_bifurc_netcdf(
 
                     bifurc_ratio_2d[split_cell_idx, 0] = ratio1
                     bifurc_ratio_2d[split_cell_idx, 1] = ratio2
-                    print(f"  Bifurcation ratios: {ratio1:.3f}, {ratio2:.3f}")
+                    logger.info(f"  Bifurcation ratios: {ratio1:.3f}, {ratio2:.3f}")
 
         # Write the updated arrays to NetCDF file
-        print("\nWriting updated arrays to NetCDF file...")
+        logger.info("\nWriting updated arrays to NetCDF file...")
         with nc.Dataset(output_file, "r+") as ds:
             if is_structured:
                 ds.variables["bifurc_ratio"][:] = bifurc_ratio_3d
@@ -331,10 +334,10 @@ def create_bifurc_netcdf(
         # Write updated CSV file
         output_csv = csv_file.replace(".csv", "_updated.csv")
         bif.to_csv(output_csv, index=False)
-        print(f"Updated CSV file written to: {output_csv}")
+        logger.info(f"Updated CSV file written to: {output_csv}")
 
         # Verify the result
-        print("\nVerifying result...")
+        logger.info("\nVerifying result...")
         verify_bifurc_file(output_file, len(bif), is_structured)
 
 
@@ -393,11 +396,11 @@ def find_closest_cell(
 
     # Check if we found a reasonable match (within ~1 degree)
     if min_distance > 1.0:
-        print(
+        logger.info(
             f"Warning: Closest cell is {min_distance:.4f} degrees away from target (lat={target_lat:.4f}, lon={target_lon:.4f})"
         )
 
-    print(f"    Found closest cell: distance={min_distance:.4f} degrees, cell_id={cell_id}")
+    logger.info(f"    Found closest cell: distance={min_distance:.4f} degrees, cell_id={cell_id}")
 
     return cell_idx, cell_id
 
@@ -440,12 +443,12 @@ def verify_bifurc_file(filename: str, num_bifurc_points: int, is_structured: boo
     is_structured : bool
         Whether the mesh is structured
     """
-    print(f"Verification of {filename}:")
+    logger.info(f"Verification of {filename}:")
 
     with nc.Dataset(filename, "r") as ds:
         # Read dimensions
         if "downstream" in ds.dimensions:
-            print(f'  downstream dimension: {ds.dimensions["downstream"].size}')
+            logger.info(f'  downstream dimension: {ds.dimensions["downstream"].size}')
 
         # Read dnID and check structure
         dnID_data = ds.variables["dnID"][:]
@@ -455,54 +458,58 @@ def verify_bifurc_file(filename: str, num_bifurc_points: int, is_structured: boo
         if is_structured:
             # Structured mesh verification
             nlon, nlat, ndownstream = dnID_data.shape
-            print(f"  Structured mesh - dnID dimensions: {nlon} x {nlat} x {ndownstream}")
+            logger.info(f"  Structured mesh - dnID dimensions: {nlon} x {nlat} x {ndownstream}")
 
             # Count non-missing values in each layer
             for k in range(ndownstream):
                 layer = dnID_data[:, :, k]
                 valid_count = np.sum((layer > 0) & (layer != -9999))
-                print(f"  Layer {k}: {valid_count} valid connections")
+                logger.info(f"  Layer {k}: {valid_count} valid connections")
 
             # Count bifurcation points (cells with secondary downstream connections)
             layer2 = dnID_data[:, :, 1]
             bifurc_count = np.sum((layer2 > 0) & (layer2 != -9999))
-            print(f"  Bifurcation points found: {bifurc_count}")
+            logger.info(f"  Bifurcation points found: {bifurc_count}")
         else:
             # Unstructured mesh verification
             ncells, ndownstream = dnID_data.shape
-            print(f"  Unstructured mesh - dnID dimensions: {ncells} x {ndownstream}")
+            logger.info(f"  Unstructured mesh - dnID dimensions: {ncells} x {ndownstream}")
 
             # Count non-missing values in each column
             for k in range(ndownstream):
                 column = dnID_data[:, k]
                 valid_count = np.sum((column > 0) & (column != -9999))
-                print(f"  Column {k}: {valid_count} valid connections")
+                logger.info(f"  Column {k}: {valid_count} valid connections")
 
             # Count bifurcation points (cells with secondary downstream connections)
             column2 = dnID_data[:, 1]
             bifurc_count = np.sum((column2 > 0) & (column2 != -9999))
-            print(f"  Bifurcation points found: {bifurc_count}")
+            logger.info(f"  Bifurcation points found: {bifurc_count}")
 
         # Check if we have the expected number of bifurcation points
         if bifurc_count == num_bifurc_points:
-            print(f"  ✓ Expected {num_bifurc_points} bifurcation points, found {bifurc_count}")
+            logger.info(
+                f"  ✓ Expected {num_bifurc_points} bifurcation points, found {bifurc_count}"
+            )
         else:
-            print(f"  ✗ Expected {num_bifurc_points} bifurcation points, found {bifurc_count}")
+            logger.info(
+                f"  ✗ Expected {num_bifurc_points} bifurcation points, found {bifurc_count}"
+            )
 
         # Count non-zero ratio and demand values
         nonzero_ratios = np.sum(bifurc_ratio > 0)
         nonzero_demands = np.sum(ibt_demand > 0)
-        print(f"  Non-zero bifurc_ratio values: {nonzero_ratios}")
-        print(f"  Non-zero ibt_demand values: {nonzero_demands}")
+        logger.info(f"  Non-zero bifurc_ratio values: {nonzero_ratios}")
+        logger.info(f"  Non-zero ibt_demand values: {nonzero_demands}")
 
         # Summary of variables created
-        print("  Variables created:")
-        print("    - dnID: Downstream connectivity with bifurcation support")
-        print("    - bifurc_ratio: Split ratios (0.0-1.0, zeros for most cells)")
-        print("    - ibt_demand: IBT demands (m³/s, zeros for most cells)")
-        print("    - dnID_original: Backup of original dnID")
+        logger.info("  Variables created:")
+        logger.info("    - dnID: Downstream connectivity with bifurcation support")
+        logger.info("    - bifurc_ratio: Split ratios (0.0-1.0, zeros for most cells)")
+        logger.info("    - ibt_demand: IBT demands (m³/s, zeros for most cells)")
+        logger.info("    - dnID_original: Backup of original dnID")
 
-    print("Verification complete.")
+    logger.info("Verification complete.")
 
 
 if __name__ == "__main__":

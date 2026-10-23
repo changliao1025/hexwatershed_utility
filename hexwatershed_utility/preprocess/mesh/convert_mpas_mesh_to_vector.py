@@ -1,6 +1,7 @@
 # this function injects the DEM into the mesh file, most of the time, the mesh should be the MPAS mesh
 import contextlib
 import importlib.util
+import logging
 import math
 import os
 import sys
@@ -8,19 +9,20 @@ import sys
 import netCDF4 as nc
 import numpy as np
 from osgeo import gdal, ogr, osr
-
 from pyearth.gis.gdal.gdal_validate_polygon_file import gdal_validate_polygon_file
 from pyearth.gis.gdal.gdal_vector_format_support import get_vector_driver_from_filename
 from pyearth.gis.geometry.convert_longitude_range import convert_360_to_180_np
 
+logger = logging.getLogger(__name__)
 
-def convert_mpas_mesh_to_vector(sFilename_mpas_mesh_netcdf_base, sFilename_vector_out):
+
+def convert_mpas_mesh_to_vector(
+    sFilename_mpas_mesh_netcdf_base: str, sFilename_vector_out: str
+) -> str:
     gdal.UseExceptions()
 
     if not os.path.exists(sFilename_mpas_mesh_netcdf_base):
-        raise FileNotFoundError(
-            f"The mesh file does not exist: {sFilename_mpas_mesh_netcdf_base}"
-        )
+        raise FileNotFoundError(f"The mesh file does not exist: {sFilename_mpas_mesh_netcdf_base}")
 
     pDriver_out = get_vector_driver_from_filename(sFilename_vector_out)
 
@@ -95,7 +97,7 @@ def convert_mpas_mesh_to_vector(sFilename_mpas_mesh_netcdf_base, sFilename_vecto
         aLatVertex = aLatitudeVertex[aVertexIndex]
         nVertex = len(aLonVertex)
         if nVertex < 3:
-            print("Vertex number is: ", nVertex, i)
+            logger.debug("Vertex number is: %d for cell index %d", nVertex, i)
         else:
             ring = ogr.Geometry(ogr.wkbLinearRing)
             for lon, lat in zip(aLonVertex, aLatVertex):
@@ -121,6 +123,6 @@ def convert_mpas_mesh_to_vector(sFilename_mpas_mesh_netcdf_base, sFilename_vecto
 
     # check whether all the polygons are valid
     iFlag_valid = gdal_validate_polygon_file(sFilename_vector_out)
-    print("The validity of the polygon is: ", iFlag_valid)
+    logger.info("The validity of the polygon file is: %s", iFlag_valid)
 
-    return
+    return sFilename_vector_out

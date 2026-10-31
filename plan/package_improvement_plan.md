@@ -1,9 +1,9 @@
 # HexWatershed Utility Package: Codebase Review and Improvement Plan
 
-**Date:** October 2026  
-**Package:** `hexwatershed_utility` (v0.1.0)  
-**Author / Maintainer:** Chang Liao  
-**Review Target:** Core library (`hexwatershed_utility/`), workflow scripts (`examples/`), build & testing configurations  
+**Date:** October 2026
+**Package:** `hexwatershed_utility` (v0.1.0)
+**Author / Maintainer:** Chang Liao
+**Review Target:** Core library (`hexwatershed_utility/`), workflow scripts (`examples/`), build & testing configurations
 
 ---
 
@@ -11,7 +11,7 @@
 
 `hexwatershed_utility` is a specialized scientific Python package designed to bridge geospatial workflows, hydrologic preprocessing (watershed boundaries, river networks, coastlines, dams, lakes), computational meshes (MPAS polygonal meshes), and Earth System Models (ESMs, particularly E3SM MOSART and ELM).
 
-While the library implements sophisticated hydrologic and mesh algorithms, the codebase exhibits critical architectural, packaging, and performance challenges resulting from rapid research development. 
+While the library implements sophisticated hydrologic and mesh algorithms, the codebase exhibits critical architectural, packaging, and performance challenges resulting from rapid research development.
 
 ### Summary Scorecard
 

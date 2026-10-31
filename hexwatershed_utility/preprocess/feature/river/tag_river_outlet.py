@@ -10,11 +10,11 @@ logger = logging.getLogger(__name__)
 
 
 def tag_river_outlet(
-    sFilename_flowline_hydrosheds_in,
-    sFilename_river_network_raster_in,
-    sFilename_river_network_raster_mouth_tagged,
-    iSpecial_value_outlet_in=255,
-):
+    sFilename_flowline_hydrosheds_in: str,
+    sFilename_river_network_raster_in: str,
+    sFilename_river_network_raster_mouth_tagged: str,
+    iSpecial_value_outlet_in: int = 255,
+) -> str:
 
     def _extract_last_vertex_xy(pGeometry_in):
         """Extract (x, y) of the last vertex from line-like geometry."""
@@ -119,3 +119,8 @@ def tag_river_outlet(
         sFilename_river_network_raster_mouth_tagged,
     )
     return sFilename_river_network_raster_mouth_tagged
+
+
+__all__ = [
+    "tag_river_outlet",
+]

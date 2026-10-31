@@ -7,9 +7,13 @@ from pyearth.toolbox.conversion.convert_vector_to_global_raster import (
 )
 from pyflowline.formats.convert_flowline_to_geojson import convert_flowline_to_geojson
 
-sFilename_vector_out = "/qfs/people/liao313/data/hexwatershed/global/vector/river_networks_4.0E4_wo_lakes.geojson"
+sFilename_vector_out = (
+    "/qfs/people/liao313/data/hexwatershed/global/vector/river_networks_4.0E4_wo_lakes.geojson"
+)
 
-sFilename_tif_out = "/qfs/people/liao313/data/hexwatershed/global/raster/global_river_networks_4.0E4.tif"
+sFilename_tif_out = (
+    "/qfs/people/liao313/data/hexwatershed/global/raster/global_river_networks_4.0E4.tif"
+)
 
 # define resolution as 1km as the equator, which is
 dResolution_x_in = 30 / 3600.0

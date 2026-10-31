@@ -38,11 +38,7 @@ COORDINATE_BOUNDS = {"longitude": (-180, 180), "latitude": (-90, 90)}
 
 from pyearthviz3d.geovista.animate_rotating_frames import animate_rotating_frames
 from pyearthviz3d.geovista.map_single_frame import map_single_frame
-from pyearthviz3d.geovista.utility import (
-    AnimationConfig,
-    ScalarBarConfig,
-    VisualizationConfig,
-)
+from pyearthviz3d.geovista.utility import AnimationConfig, ScalarBarConfig, VisualizationConfig
 
 
 def map_mpas_mesh_on_sphere(
@@ -96,7 +92,7 @@ def map_mpas_mesh_on_sphere(
         "iFlag_show_graticule": True,
         "sColormap": "viridis",
         "sCoastline_color": "black",
-        "sBase_layer": None,  #'natural_earth_1',
+        "sBase_layer": None,  # 'natural_earth_1',
         "dCoastline_width": 1.0,
         "iFlag_wireframe_only": False,
         "iFlag_create_animation": False,
@@ -181,14 +177,10 @@ def map_mpas_mesh_on_sphere(
         # Convert 1-based connectivity indices to 0-based (MPAS uses 1-based indexing)
         # Invalid vertices are marked with fill_value (usually 0)
         fill_value = 0
-        aConnectivity_0based = np.where(
-            aConnectivity > fill_value, aConnectivity - 1, -1
-        )
+        aConnectivity_0based = np.where(aConnectivity > fill_value, aConnectivity - 1, -1)
 
         # Create masked connectivity array (mask invalid indices)
-        connectivity_masked = np.ma.masked_where(
-            aConnectivity_0based < 0, aConnectivity_0based
-        )
+        connectivity_masked = np.ma.masked_where(aConnectivity_0based < 0, aConnectivity_0based)
 
         # Validate connectivity indices (after conversion to 0-based)
         valid_connectivity = aConnectivity_0based[aConnectivity_0based >= 0]
@@ -222,9 +214,7 @@ def map_mpas_mesh_on_sphere(
                 pMesh.cell_data[sVariable_to_plot] = np.sqrt(variable_data)
                 sScalar = sVariable_to_plot
             except Exception as e:
-                logger.error(
-                    f"Error reading variable {sVariable_to_plot} from dataset: {e}"
-                )
+                logger.error(f"Error reading variable {sVariable_to_plot} from dataset: {e}")
                 return False
         else:
             sScalar = "Cell ID"
@@ -303,9 +293,7 @@ def map_mpas_mesh_on_sphere(
         return True
 
     except ImportError as e:
-        logger.error(
-            "GeoVista library not available. Install with: pip install geovista"
-        )
+        logger.error("GeoVista library not available. Install with: pip install geovista")
         logger.error(f"Import error: {e}")
         return False
 

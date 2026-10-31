@@ -145,8 +145,6 @@ def exam_jigsaw_mesh(sFilename_jigsaw_mesh_netcdf, iFlag_plot_in=None):
 # create a main call
 if __name__ == "__main__":
 
-    sFilename_jigsaw_mesh_netcdf = (
-        "/qfs/people/liao313/workspace/cplus/mpas_debug/mesh_in.nc"
-    )
+    sFilename_jigsaw_mesh_netcdf = "/qfs/people/liao313/workspace/cplus/mpas_debug/mesh_in.nc"
     iFlag_plot_in = 1
     exam_jigsaw_mesh(sFilename_jigsaw_mesh_netcdf, iFlag_plot_in=1)

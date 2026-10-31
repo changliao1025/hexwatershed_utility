@@ -20,9 +20,7 @@ from hexwatershed_utility.mpas.map_wkt_polygon import map_wkt_polygon
 gdal.UseExceptions()
 
 
-def exam_mpas_base_mesh(
-    sFilename_mpas_mesh_netcdf_base, iFlag_plot_in=None, sFolder_out=None
-):
+def exam_mpas_base_mesh(sFilename_mpas_mesh_netcdf_base, iFlag_plot_in=None, sFolder_out=None):
 
     if iFlag_plot_in is not None:
         if not os.path.exists(sFolder_out):
@@ -173,12 +171,8 @@ def exam_mpas_base_mesh(
 if __name__ == "__main__":
 
     iFlag_plot_in = 1
-    sFolder_out = (
-        "/qfs/people/liao313/workspace/python/hexwatershed_utility/figures/mpas"
-    )
-    sPath_to_find = (
-        "/compyfs/liao313/04model/pyflowline/global/pyflowline20250101010/jigsaw/"
-    )
+    sFolder_out = "/qfs/people/liao313/workspace/python/hexwatershed_utility/figures/mpas"
+    sPath_to_find = "/compyfs/liao313/04model/pyflowline/global/pyflowline20250101010/jigsaw/"
     # find under this path for each folder
     aFolder = os.listdir(sPath_to_find)
     for sFolder in aFolder:
@@ -186,9 +180,7 @@ if __name__ == "__main__":
         nLength = len(sFolder)
         if nLength > 3 and sFolder[0:3] == "tmp":
             # this is the folder
-            sFilename_mpas_mesh_netcdf_base = os.path.join(
-                sPath_to_find, sFolder, "mesh_out.nc"
-            )
+            sFilename_mpas_mesh_netcdf_base = os.path.join(sPath_to_find, sFolder, "mesh_out.nc")
             exam_mpas_base_mesh(
                 sFilename_mpas_mesh_netcdf_base,
                 iFlag_plot_in=None,

@@ -1,8 +1,6 @@
 import os
 
-from hexwatershed_utility.preprocess.feature.river.simplify_hydrorivers_network import (
-    simplify_hydrorivers_network,
-)
+from hexwatershed_utility.preprocess.feature.river import simplify_river_network
 
 sFilename_flowline_hydroshed_in = "/compyfs/liao313/00raw/hydrology/hydrosheds/hydroriver/HydroRIVERS_v10_na_shp/HydroRIVERS_v10_na.shp"
 
@@ -35,11 +33,9 @@ sWorkspace_out = os.path.join(sWorkspace_out, sFoldname)
 if not os.path.exists(sWorkspace_out):
     os.makedirs(sWorkspace_out)
 
-sFilename_flowline_hydroshed_out = os.path.join(
-    sWorkspace_out, sFilename_flowline_hydroshed_out
-)
+sFilename_flowline_hydroshed_out = os.path.join(sWorkspace_out, sFilename_flowline_hydroshed_out)
 
-simplify_hydrorivers_networks(
+simplify_river_network(
     sFilename_flowline_hydroshed_in,
     sFilename_flowline_hydroshed_out,
     dDistance_tolerance_in,

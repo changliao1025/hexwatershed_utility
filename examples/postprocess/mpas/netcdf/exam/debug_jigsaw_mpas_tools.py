@@ -9,9 +9,7 @@ from geometric_features import GeometricFeatures
 from mpas_tools.io import write_netcdf
 from mpas_tools.logging import check_call
 from mpas_tools.mesh.conversion import convert, cull
-from pyearth.system.python.retrieve_python_environment import (
-    retrieve_python_environment,
-)
+from pyearth.system.python.retrieve_python_environment import retrieve_python_environment
 from pyflowline.mesh.mpas.mpas_tools.mpasmsh import (
     inject_edge_tags,
     jigsaw_mesh_to_netcdf,
@@ -26,9 +24,7 @@ def debug_jigsaw_mpas_tools(sWorkspace_jigsaw_out, sFilename_triangles):
     netcdfFormat = "NETCDF4_CLASSIC"  # NETCDF3_64BIT
 
     print("Forming base_mesh.nc")
-    sFilename_base_mesh = os.path.join(
-        sWorkspace_jigsaw_out, "out", "base_mesh_debug.nc"
-    )
+    sFilename_base_mesh = os.path.join(sWorkspace_jigsaw_out, "out", "base_mesh_debug.nc")
     dummy = convert(xr.open_dataset(sFilename_triangles))
     write_netcdf(dummy, fileName=sFilename_base_mesh, format=netcdfFormat)
 

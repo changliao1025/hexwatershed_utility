@@ -1,14 +1,11 @@
 """
-Dam and reservoir feature utilities.
+Dam and reservoir snapping utilities.
 """
 
-__all__ = []
+from hexwatershed_utility.preprocess.feature.dam.snap_dams_to_river_network import (
+    snap_dams_to_river_network,
+)
 
-try:
-    from hexwatershed_utility.preprocess.feature.dam.snap_dams_to_river_network import (
-        snap_dams_to_river_networks,
-    )
-
-    __all__.append("snap_dams_to_river_networks")
-except ImportError:
-    pass
+__all__ = [
+    "snap_dams_to_river_network",
+]

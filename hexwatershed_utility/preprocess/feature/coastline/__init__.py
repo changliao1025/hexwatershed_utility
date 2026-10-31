@@ -1,32 +1,19 @@
 """
-Coastline and land-ocean mask utilities.
+Coastline, land-ocean mask, and coastal flowline alignment utilities.
 """
 
-__all__ = []
+from hexwatershed_utility.preprocess.feature.coastline.create_land_ocean_mask import (
+    create_land_ocean_mask_from_basins,
+    create_land_ocean_mask_from_shoreline,
+    remove_internal_polygon,
+)
+from hexwatershed_utility.preprocess.feature.coastline.extend_land_mask_to_rivers import (
+    extend_land_mask_to_rivers,
+)
 
-try:
-    from hexwatershed_utility.preprocess.feature.coastline.create_land_ocean_mask_from_hydrobasin import (
-        create_land_ocean_mask_from_hydrobasin,
-    )
-
-    __all__.append("create_land_ocean_mask_from_hydrobasin")
-except ImportError:
-    pass
-
-try:
-    from hexwatershed_utility.preprocess.feature.coastline.create_land_ocean_mask_from_naturalearth import (
-        create_land_ocean_mask_from_naturalearth,
-    )
-
-    __all__.append("create_land_ocean_mask_from_naturalearth")
-except ImportError:
-    pass
-
-try:
-    from hexwatershed_utility.preprocess.feature.coastline.fix_naturalearth_hydrosheds_incompatibility import (
-        fix_naturalearth_hydrosheds_incompatibility,
-    )
-
-    __all__.append("fix_naturalearth_hydrosheds_incompatibility")
-except ImportError:
-    pass
+__all__ = [
+    "create_land_ocean_mask_from_basins",
+    "create_land_ocean_mask_from_shoreline",
+    "remove_internal_polygon",
+    "extend_land_mask_to_rivers",
+]

@@ -34,9 +34,7 @@ def inject_dem_into_mpas_mesh_geojson(
     if aFilename_dem_with_ice is not None:
         for sFilename_dem_with_ice in aFilename_dem_with_ice:
             if not os.path.exists(sFilename_dem_with_ice):
-                print(
-                    "The DEM with ice file does not exist, please check the file path"
-                )
+                print("The DEM with ice file does not exist, please check the file path")
 
     # first we need to extract the DEM using land ocean mask
     sFilename_land_ocean_mask = (
@@ -54,9 +52,7 @@ def inject_dem_into_mpas_mesh_geojson(
     if aFilename_dem_with_ice is not None:
         aFilename_dem_with_ice_masked = list()
         for sFilename_dem_with_ice in aFilename_dem_with_ice:
-            sFilename_dem_with_ice_masked = sFilename_dem_with_ice.replace(
-                ".tif", "_masked.tif"
-            )
+            sFilename_dem_with_ice_masked = sFilename_dem_with_ice.replace(".tif", "_masked.tif")
             # if os.path.exists(sFilename_dem_with_ice_masked):
             #    os.remove(sFilename_dem_with_ice_masked)
             # clip_raster_by_polygon_file(sFilename_dem_with_ice, sFilename_land_ocean_mask, sFilename_dem_with_ice_masked,
@@ -114,9 +110,7 @@ def inject_dem_into_mpas_mesh_geojson(
             continue
         else:
             pDataset3 = pDriver_shapefile.CreateDataSource(sFilename_shapefile_cut)
-            pLayerOut3 = pDataset3.CreateLayer(
-                "cell", pSpatialRef_target, ogr.wkbPolygon
-            )
+            pLayerOut3 = pDataset3.CreateLayer("cell", pSpatialRef_target, ogr.wkbPolygon)
             pLayerDefn3 = pLayerOut3.GetLayerDefn()
             pFeatureOut3 = ogr.Feature(pLayerDefn3)
             pFeatureOut3.SetGeometry(pPolygon)
@@ -131,9 +125,7 @@ def inject_dem_into_mpas_mesh_geojson(
                 format="MEM",
                 resampleAlg=sResampleAlg,
             )
-            pDataset_clip_warped = gdal.Warp(
-                "", aFilename_dem_masked, options=pWrapOption
-            )
+            pDataset_clip_warped = gdal.Warp("", aFilename_dem_masked, options=pWrapOption)
             aData_clip = pDataset_clip_warped.ReadAsArray()
             aData_clip[aData_clip == dMissing_value] = -9999
             dummy_index0 = np.where(aData_clip != -9999)
@@ -227,44 +219,28 @@ if __name__ == "__main__":
     )
     aFilename_dem_with_ice = list()
     aFilename_dem_with_ice.append(
-        os.path.join(
-            sWorkspace_dem_subice, "gebco_2024_sub_ice_n0.0_s-90.0_w0.0_e90.0.tif"
-        )
+        os.path.join(sWorkspace_dem_subice, "gebco_2024_sub_ice_n0.0_s-90.0_w0.0_e90.0.tif")
     )
     aFilename_dem_with_ice.append(
-        os.path.join(
-            sWorkspace_dem_subice, "gebco_2024_sub_ice_n0.0_s-90.0_w-180.0_e-90.0.tif"
-        )
+        os.path.join(sWorkspace_dem_subice, "gebco_2024_sub_ice_n0.0_s-90.0_w-180.0_e-90.0.tif")
     )
     aFilename_dem_with_ice.append(
-        os.path.join(
-            sWorkspace_dem_subice, "gebco_2024_sub_ice_n0.0_s-90.0_w-90.0_e0.0.tif"
-        )
+        os.path.join(sWorkspace_dem_subice, "gebco_2024_sub_ice_n0.0_s-90.0_w-90.0_e0.0.tif")
     )
     aFilename_dem_with_ice.append(
-        os.path.join(
-            sWorkspace_dem_subice, "gebco_2024_sub_ice_n0.0_s-90.0_w90.0_e180.0.tif"
-        )
+        os.path.join(sWorkspace_dem_subice, "gebco_2024_sub_ice_n0.0_s-90.0_w90.0_e180.0.tif")
     )
     aFilename_dem_with_ice.append(
-        os.path.join(
-            sWorkspace_dem_subice, "gebco_2024_sub_ice_n90.0_s0.0_w0.0_e90.0.tif"
-        )
+        os.path.join(sWorkspace_dem_subice, "gebco_2024_sub_ice_n90.0_s0.0_w0.0_e90.0.tif")
     )
     aFilename_dem_with_ice.append(
-        os.path.join(
-            sWorkspace_dem_subice, "gebco_2024_sub_ice_n90.0_s0.0_w-180.0_e-90.0.tif"
-        )
+        os.path.join(sWorkspace_dem_subice, "gebco_2024_sub_ice_n90.0_s0.0_w-180.0_e-90.0.tif")
     )
     aFilename_dem_with_ice.append(
-        os.path.join(
-            sWorkspace_dem_subice, "gebco_2024_sub_ice_n90.0_s0.0_w-90.0_e0.0.tif"
-        )
+        os.path.join(sWorkspace_dem_subice, "gebco_2024_sub_ice_n90.0_s0.0_w-90.0_e0.0.tif")
     )
     aFilename_dem_with_ice.append(
-        os.path.join(
-            sWorkspace_dem_subice, "gebco_2024_sub_ice_n90.0_s0.0_w90.0_e180.0.tif"
-        )
+        os.path.join(sWorkspace_dem_subice, "gebco_2024_sub_ice_n90.0_s0.0_w90.0_e180.0.tif")
     )
 
     inject_dem_into_mpas_mesh_geojson(

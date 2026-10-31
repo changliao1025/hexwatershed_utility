@@ -147,9 +147,7 @@ def find_gage_mesh_cell_id(
         os.remove(sFilename_geojson_gage)
 
     pDataset_gage = pDriver.CreateDataSource(sFilename_geojson_gage)
-    pLayer_gage = pDataset_gage.CreateLayer(
-        "gauge", pSpatial_reference_gcs, ogr.wkbPoint
-    )
+    pLayer_gage = pDataset_gage.CreateLayer("gauge", pSpatial_reference_gcs, ogr.wkbPoint)
     pLayer_gage.CreateField(ogr.FieldDefn("name", ogr.OFTString))
     pLayer_gage.CreateField(ogr.FieldDefn("lon", ogr.OFTReal))
     pLayer_gage.CreateField(ogr.FieldDefn("lat", ogr.OFTReal))
@@ -213,15 +211,10 @@ def find_gage_mesh_cell_id(
         pBoundary = aBoundary[dIndex_min]
         lCellID = int(aID[dIndex_min])
 
-        dRatio = float(
-            dDiff_min / np.max([dDrainage_area, dDrainage_mesh_cell_min])
-        )
+        dRatio = float(dDiff_min / np.max([dDrainage_area, dDrainage_mesh_cell_min]))
         iFlag_qa = float(dRatio)
 
-        if (
-            dRatio < dThreshold_difference_in
-            and dDrainage_area > dThreshold_drainage
-        ):
+        if dRatio < dThreshold_difference_in and dDrainage_area > dThreshold_drainage:
             aIndex_out.append(i)
             aCellID_out.append(lCellID)
             aDrainage_area_out.append(dDrainage_mesh_cell_min)

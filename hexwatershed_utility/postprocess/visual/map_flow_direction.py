@@ -43,6 +43,7 @@ def map_flow_direction(
 
 if __name__ == "__main__":
     import sys
+
     if len(sys.argv) > 1:
         out = sys.argv[2] if len(sys.argv) > 2 else "mpas_flow_direction_map.png"
         map_flow_direction(sys.argv[1], out)

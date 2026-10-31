@@ -25,5 +25,6 @@ def map_flow_direction_on_sphere(sFilename_polyline_in: str):
 
 if __name__ == "__main__":
     import sys
+
     if len(sys.argv) > 1:
         map_flow_direction_on_sphere(sys.argv[1])

@@ -4,6 +4,8 @@ Inject DEM elevations into MPAS computational mesh NetCDF files.
 
 import math
 import os
+from typing import Any, List, Optional
+
 import netCDF4 as nc
 import numpy as np
 from osgeo import gdal, ogr, osr
@@ -12,9 +14,9 @@ from osgeo import gdal, ogr, osr
 def inject_dem_into_mpas_mesh_netcdf(
     sFilename_mesh_netcdf: str,
     sFilename_mesh_with_dem_netcdf: str,
-    aFilename_dem_geotiff: list,
-    aFilename_dem_with_ice: list = None,
-    sFilename_land_ocean_mask: str = None,
+    aFilename_dem_geotiff: List[str],
+    aFilename_dem_with_ice: Optional[List[Any]] = None,
+    sFilename_land_ocean_mask: Optional[str] = None,
 ):
     """
     Inject digital elevation model (DEM) values into an MPAS NetCDF mesh.
@@ -61,9 +63,7 @@ def inject_dem_into_mpas_mesh_netcdf(
 
             # Copy existing variables
             for sKey, aValue in pDatasets_mesh.variables.items():
-                outVar = pDatasets_out.createVariable(
-                    sKey, aValue.datatype, aValue.dimensions
-                )
+                outVar = pDatasets_out.createVariable(sKey, aValue.datatype, aValue.dimensions)
                 outVar[:] = aValue[:]
                 outVar.setncatts({k: aValue.getncattr(k) for k in aValue.ncattrs()})
 
@@ -103,7 +103,9 @@ def inject_dem_into_mpas_mesh_netcdf(
                         if val != -9999:
                             aElevation[idx] = val
 
-            elev_var = pDatasets_out.createVariable("elevation", "f8", ("nCells",), fill_value=-9999.0)
+            elev_var = pDatasets_out.createVariable(
+                "elevation", "f8", ("nCells",), fill_value=-9999.0
+            )
             elev_var[:] = aElevation
             elev_var.setncatts({"units": "m", "long_name": "surface elevation"})
 

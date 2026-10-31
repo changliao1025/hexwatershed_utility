@@ -5,9 +5,7 @@ from pyearth.toolbox.data.geoparquet.convert_geojson_to_geoparquet import (
     convert_geojson_to_geoparquet,
 )
 
-sFilename_mesh = (
-    "/compyfs/liao313/04model/pyflowline/greatlakes/pyflowline20230701005/mpas.geojson"
-)
+sFilename_mesh = "/compyfs/liao313/04model/pyflowline/greatlakes/pyflowline20230701005/mpas.geojson"
 
 pDriver_geojson = ogr.GetDriverByName("GeoJSON")
 # read the whole domain
@@ -17,7 +15,9 @@ pSpatialRef = pLayer_mesh.GetSpatialRef()
 nFeature_mesh = pLayer_mesh.GetFeatureCount()
 
 
-sFilename_out = "/compyfs/liao313/04model/pyflowline/greatlakes/pyflowline20230701005/mpas_mesh_extract.geojson"
+sFilename_out = (
+    "/compyfs/liao313/04model/pyflowline/greatlakes/pyflowline20230701005/mpas_mesh_extract.geojson"
+)
 
 
 if os.path.exists(sFilename_out):

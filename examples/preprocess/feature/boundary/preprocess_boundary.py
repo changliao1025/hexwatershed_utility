@@ -5,9 +5,7 @@ from pyearth.system.define_global_variables import *
 from pyearth.toolbox.conversion.convert_vector_to_global_raster import (
     convert_vector_to_global_raster,
 )
-from pyearth.toolbox.data.ocean.define_land_ocean_mask import (
-    create_land_ocean_vector_mask,
-)
+from pyearth.toolbox.data.ocean.define_land_ocean_mask import create_land_ocean_vector_mask
 from pyearth.toolbox.management.vector.remove_small_polygon import remove_small_polygon
 
 sPath_project = "/qfs/people/liao313/workspace/python/hexwatershed_utility/"
@@ -15,9 +13,7 @@ sPath_project = "/qfs/people/liao313/workspace/python/hexwatershed_utility/"
 sys.path.append(sPath_project)
 from hexwatershed_utility.codes.merge_features import merge_features
 
-sFilename_geojson_raw = (
-    "/compyfs/liao313/00raw/mesh/conus/ICoM_CONUS/domain_CONUS.geojson"
-)
+sFilename_geojson_raw = "/compyfs/liao313/00raw/mesh/conus/ICoM_CONUS/domain_CONUS.geojson"
 sWorkspace_vector = "/qfs/people/liao313/data/hexwatershed/global/vector/"
 sWorkspace_raster = "/qfs/people/liao313/data/hexwatershed/global/raster/"
 
@@ -77,24 +73,12 @@ if iFlag_remove_small_island == 1:
     else:
         sTemp = "land_ocean_mask_wo_island_" + sThreshold_island + "_conus" + ".geojson"
         sFilename_geojson_out = os.path.join(sWorkspace_vector, sTemp)
-        remove_small_polygon(
-            sFilename_geojson_in, sFilename_geojson_out, sThreshold_island
-        )
-        sTemp = (
-            "land_ocean_mask_wo_island_"
-            + sThreshold_island
-            + "_conus_merged"
-            + ".geojson"
-        )
+        remove_small_polygon(sFilename_geojson_in, sFilename_geojson_out, sThreshold_island)
+        sTemp = "land_ocean_mask_wo_island_" + sThreshold_island + "_conus_merged" + ".geojson"
         sFilename_clip_new = os.path.join(sWorkspace_vector, sTemp)
         merge_features(sFilename_geojson_out, sFilename_clip_new)
         sTemp = (
-            "land_ocean_mask_wo_island_"
-            + sThreshold_island
-            + "_"
-            + sResolution
-            + "_conus"
-            + ".tif"
+            "land_ocean_mask_wo_island_" + sThreshold_island + "_" + sResolution + "_conus" + ".tif"
         )
         sFilename_tif_out = os.path.join(sWorkspace_raster, sTemp)
         print("converting to raster", sFilename_tif_out)

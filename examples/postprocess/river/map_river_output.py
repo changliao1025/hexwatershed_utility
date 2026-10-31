@@ -10,9 +10,7 @@ from netCDF4 import Dataset
 from pyearth.system.define_global_variables import *
 
 # desired_proj = ccrs.PlateCarree()
-desired_proj = ccrs.Orthographic(
-    central_longitude=-145, central_latitude=69, globe=None
-)
+desired_proj = ccrs.Orthographic(central_longitude=-145, central_latitude=69, globe=None)
 desired_proj = ccrs.Orthographic(
     central_longitude=0.50 * (-149.5 + (-146.5)),
     central_latitude=0.50 * (68.1 + 70.35),
@@ -134,9 +132,7 @@ def map_mosart_variable(sFilename_out, sTitle, sUnit, aData, aExtent_in=None):
     ax.set_extent(aExtent)
     ax.coastlines()  # resolution='110m')
     # crs=ccrs.PlateCarree(),
-    gl = ax.gridlines(
-        draw_labels=True, linewidth=0.2, color="gray", alpha=0.3, linestyle="--"
-    )
+    gl = ax.gridlines(draw_labels=True, linewidth=0.2, color="gray", alpha=0.3, linestyle="--")
     gl.xlabel_style = {"size": 8, "color": "k", "rotation": 0, "ha": "right"}
     gl.ylabel_style = {"size": 8, "color": "k", "rotation": 90, "weight": "normal"}
     ax.set_title(sTitle, loc="center")
@@ -179,9 +175,7 @@ def map_mosart_output():
     sWorkspace_simulation_case_run = "/compyfs/liao313/esm_scratch/esm20220701048/run"
     sCase = "esm20220701048"
 
-    sWorkspace_analysis_case = (
-        "/compyfs/liao313/04model/esm/sag/analysis/esm20220701048/"
-    )
+    sWorkspace_analysis_case = "/compyfs/liao313/04model/esm/sag/analysis/esm20220701048/"
 
     sVariable_discharge = "RIVER_DISCHARGE_OVER_LAND_LIQ"
     sVariable_surface = "QSUB_LIQ"
@@ -214,15 +208,11 @@ def map_mosart_output():
                 pass
             else:
                 print(sFilename + " is missing")
-                print(
-                    "Nope, the path doesn't reach your file. Go research filepath in python"
-                )
+                print("Nope, the path doesn't reach your file. Go research filepath in python")
                 return
 
             aDatasets = Dataset(sFilename)
-            sFilename_out = (
-                sWorkspace_analysis_case + slash + "discharge" + sYear + sMonth + ".png"
-            )
+            sFilename_out = sWorkspace_analysis_case + slash + "discharge" + sYear + sMonth + ".png"
 
             for sKey, aValue in aDatasets.variables.items():
                 if sKey.lower() == sVariable_surface.lower():
@@ -234,9 +224,7 @@ def map_mosart_output():
                     # map_mosart_variable(sFilename_out,sTitle, sUnit, aData_out, aExtent_in=aExtent_in)
                     break
 
-        sFilename_out = (
-            sWorkspace_analysis_case + slash + "surface_runoff" + sYear + ".png"
-        )
+        sFilename_out = sWorkspace_analysis_case + slash + "surface_runoff" + sYear + ".png"
         aData_year1 = np.mean(aData_year, axis=0)
 
         print(np.sum(aData_year1))

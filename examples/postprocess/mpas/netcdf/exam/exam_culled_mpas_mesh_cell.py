@@ -159,9 +159,7 @@ def check_mesh_cell_polygon(
                     # check we can find a base cell or not
                     if len(lCell_index_base) == 1 and lCell_index_base[0] != 0:
                         lCellID_base = aIndexToCellID_base[lCell_index_base]
-                        aVertexOnCellIndex = np.array(
-                            aVertexOnCell_base[lCell_index_base, :]
-                        )
+                        aVertexOnCellIndex = np.array(aVertexOnCell_base[lCell_index_base, :])
                         dummy0 = np.where(aVertexOnCellIndex > 0)
                         aVertexIndex = aVertexOnCellIndex[dummy0] - 1
                         aLonVertex_base = aLongitudeVertex_base[aVertexIndex]
@@ -197,9 +195,7 @@ def check_mesh_cell_polygon(
                                 print("Base polygon is valid...")
 
                             sFilename_png = "mesh_cell_" + str(lCellID_in) + "_base.png"
-                            sFilename_png_out = os.path.join(
-                                sPath_script, sFilename_png
-                            )
+                            sFilename_png_out = os.path.join(sPath_script, sFilename_png)
                             map_wkt_polygon(pPolygon_wkt_base, sFilename_png_out)
                     else:
                         print("The base cell is not found...")
@@ -211,8 +207,13 @@ def check_mesh_cell_polygon(
 
 # create a main call
 if __name__ == "__main__":
-    sFilename_mpas_mesh_netcdf_culled = "/compyfs/liao313/04model/pyflowline/conus/pyflowline20241201019/jigsaw/out/invert_mesh.nc"
-    sFilename_mpas_mesh_netcdf_base = "/compyfs/liao313/04model/pyflowline/conus/pyflowline20241201019/jigsaw/out/base_mesh.nc"
+    sFilename_mpas_mesh_netcdf_culled = (
+        "/compyfs/liao313/04model/pyflowline/conus/pyflowline20241201019/jigsaw/out/invert_mesh.nc"
+    )
+    sFilename_mpas_mesh_netcdf_base = (
+        "/compyfs/liao313/04model/pyflowline/conus/pyflowline20241201019/jigsaw/out/base_mesh.nc"
+    )
+    aCellID_in = [1]
 
     check_mesh_cell_polygon(
         sFilename_mpas_mesh_netcdf_culled,

@@ -1,15 +1,17 @@
 """
-Watershed boundary extraction and repair utilities.
+Watershed boundary identification, extraction, and merging utilities.
 """
 
-from hexwatershed_utility.preprocess.feature.watershed_boundary.find_minimal_hydrobasins_watershed_boundary import (  # noqa: F401
-    find_minimal_hydrobasins_watershed_boundary,
+from hexwatershed_utility.preprocess.feature.watershed_boundary.find_boundary import (
+    find_containing_boundary,
 )
-from hexwatershed_utility.preprocess.feature.watershed_boundary.reorganize_boundary import (  # noqa: F401
-    reorganize_boundary,
+from hexwatershed_utility.preprocess.feature.watershed_boundary.merge_boundary import (
+    merge_boundary_files,
+    merge_boundary_polygons,
 )
 
 __all__ = [
-    "reorganize_boundary",
-    "find_minimal_hydrobasins_watershed_boundary",
+    "find_containing_boundary",
+    "merge_boundary_polygons",
+    "merge_boundary_files",
 ]

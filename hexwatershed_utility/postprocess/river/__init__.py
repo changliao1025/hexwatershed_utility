@@ -24,18 +24,14 @@ except ImportError:
     pass
 
 try:
-    from hexwatershed_utility.postprocess.river.create_bifurc_netcdf import (
-        create_bifurc_netcdf,
-    )
+    from hexwatershed_utility.postprocess.river.create_bifurc_netcdf import create_bifurc_netcdf
 
     __all__.append("create_bifurc_netcdf")
 except ImportError:
     pass
 
 try:
-    from hexwatershed_utility.postprocess.river.find_gage_mesh_cell_id import (
-        find_gage_mesh_cell_id,
-    )
+    from hexwatershed_utility.postprocess.river.find_gage_mesh_cell_id import find_gage_mesh_cell_id
 
     __all__.append("find_gage_mesh_cell_id")
 except ImportError:

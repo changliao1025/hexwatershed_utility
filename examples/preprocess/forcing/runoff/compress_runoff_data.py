@@ -1,12 +1,8 @@
 import numpy as np
 from netCDF4 import Dataset  # read netcdf
 from osgeo import gdal, osr  # the default operator
-from pyearth.gis.gdal.write.gdal_write_envi_file import (
-    gdal_write_envi_file_multiple_band,
-)
-from pyearth.gis.gdal.write.gdal_write_geotiff_file import (
-    gdal_write_geotiff_file_multiple_band,
-)
+from pyearth.gis.gdal.write.gdal_write_envi_file import gdal_write_envi_file_multiple_band
+from pyearth.gis.gdal.write.gdal_write_geotiff_file import gdal_write_geotiff_file_multiple_band
 from pyearth.system.define_global_variables import *
 from scipy.io import loadmat
 

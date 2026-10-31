@@ -1,15 +1,19 @@
+import json
 import os
 from pathlib import Path
-import json
-import numpy as np
+
 import netCDF4 as nc
-from pyesm.mesh.unstructured.esm_create_unstructured_domain_file_full import esm_create_unstructured_domain_file_full
-from pyesm.mesh.unstructured.esm_convert_unstructured_domain_file_to_scripgrid_file import esm_convert_unstructured_domain_file_to_scripgrid_file
-
+import numpy as np
 from pyearth.gis.geometry.calculate_polygon_area import calculate_polygon_area
+from pyesm.mesh.unstructured.esm_convert_unstructured_domain_file_to_scripgrid_file import (
+    esm_convert_unstructured_domain_file_to_scripgrid_file,
+)
+from pyesm.mesh.unstructured.esm_create_unstructured_domain_file_full import (
+    esm_create_unstructured_domain_file_full,
+)
 
-def convert_hexwatershed_json_to_elm_domain_file(sFilename_json_in,
-                                               sFilename_elm_domain_out):
+
+def convert_hexwatershed_json_to_elm_domain_file(sFilename_json_in, sFilename_elm_domain_out):
     aLongitude = list()
     aLatitude = list()
     aLonV_region = list()
@@ -23,22 +27,22 @@ def convert_hexwatershed_json_to_elm_domain_file(sFilename_json_in,
         for i in range(ncell):
             pcell = data[i]
             lID = lID + 1
-            #aArea.append(dArea)
-            aLongitude.append(float(pcell['dLongitude_center_degree']))
-            aLatitude.append(float(pcell['dLatitude_center_degree']))
-            aCellID.append(int(pcell['lCellID']))
+            # aArea.append(dArea)
+            aLongitude.append(float(pcell["dLongitude_center_degree"]))
+            aLatitude.append(float(pcell["dLatitude_center_degree"]))
+            aCellID.append(int(pcell["lCellID"]))
 
-            dummy_vertex = pcell['vVertex']
+            dummy_vertex = pcell["vVertex"]
             aVertex_lon = np.full(9, -9999, float)
             aVertex_lat = np.full(9, -9999, float)
             nVertex = len(dummy_vertex)
             for j in range(nVertex):
-                aVertex_lon[j] = dummy_vertex[j]['dLongitude_degree']
-                aVertex_lat[j] = dummy_vertex[j]['dLatitude_degree']
+                aVertex_lon[j] = dummy_vertex[j]["dLongitude_degree"]
+                aVertex_lat[j] = dummy_vertex[j]["dLatitude_degree"]
 
             aLonV_region.append(aVertex_lon)
             aLatV_region.append(aVertex_lat)
-            dArea = float(pcell['dArea'])
+            dArea = float(pcell["dArea"])
             aArea.append(dArea)
 
         pass
@@ -48,7 +52,6 @@ def convert_hexwatershed_json_to_elm_domain_file(sFilename_json_in,
     nCell = len(aCellID)
     aCellID = np.array(aCellID).reshape(ncell)
     aArea = np.array(aArea).reshape(ncell)
-
 
     aLonV_region = np.array(aLonV_region)  # .T
     aLatV_region = np.array(aLatV_region)  # .T
@@ -61,12 +64,12 @@ def convert_hexwatershed_json_to_elm_domain_file(sFilename_json_in,
     aLonV_region.shape = (nrow, 1, nvertex)
     aLatV_region.shape = (nrow, 1, nvertex)
 
-    esm_create_unstructured_domain_file_full(aLongitude, aLatitude, aLonV_region, aLatV_region,
-                                              sFilename_elm_domain_out, aArea_in=aArea)
+    esm_create_unstructured_domain_file_full(
+        aLongitude, aLatitude, aLonV_region, aLatV_region, sFilename_elm_domain_out, aArea_in=aArea
+    )
 
-    esm_convert_unstructured_domain_file_to_scripgrid_file(sFilename_elm_domain_out, sFilename_elm_domain_out.replace('.nc', '.scripgrid.nc'))
-
+    esm_convert_unstructured_domain_file_to_scripgrid_file(
+        sFilename_elm_domain_out, sFilename_elm_domain_out.replace(".nc", ".scripgrid.nc")
+    )
 
     return
-
-

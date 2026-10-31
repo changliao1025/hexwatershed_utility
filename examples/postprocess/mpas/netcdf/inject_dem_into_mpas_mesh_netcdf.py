@@ -13,9 +13,7 @@ from pyearth.gis.geometry.convert_idl_polygon_to_valid_polygon import (
 )
 from pyearth.gis.geometry.convert_longitude_range import convert_360_to_180_np
 from pyearth.gis.geometry.split_polygon_cross_idl import split_polygon_cross_idl
-from pyearth.toolbox.analysis.extract.clip_raster_by_polygon_file import (
-    clip_raster_by_polygon_file,
-)
+from pyearth.toolbox.analysis.extract.clip_raster_by_polygon_file import clip_raster_by_polygon_file
 
 gdal.UseExceptions()
 
@@ -62,9 +60,7 @@ def inject_dem_into_mpas_mesh_netcdf(
 
     aFilename_dem_with_ice_masked = list()
     for sFilename_dem_with_ice in aFilename_dem_with_ice:
-        sFilename_dem_with_ice_masked = sFilename_dem_with_ice.replace(
-            ".tif", "_masked.tif"
-        )
+        sFilename_dem_with_ice_masked = sFilename_dem_with_ice.replace(".tif", "_masked.tif")
         # if os.path.exists(sFilename_dem_with_ice_masked):
         #    os.remove(sFilename_dem_with_ice_masked)
         # clip_raster_by_polygon_file(sFilename_dem_with_ice, sFilename_land_ocean_mask, sFilename_dem_with_ice_masked,
@@ -227,9 +223,7 @@ def inject_dem_into_mpas_mesh_netcdf(
                         #    sFilename_shapefile_cut = '/qfs/people/liao313/workspace/python/hexwatershed_utility/hexwatershed_utility/mpas/netcdf/debug/tmp_polygon.shp'
                         #    if os.path.exists(sFilename_shapefile_cut):
                         #        pDriver_shapefile.DeleteDataSource(sFilename_shapefile_cut)
-                        pDataset3 = pDriver_shapefile.CreateDataSource(
-                            sFilename_shapefile_cut
-                        )
+                        pDataset3 = pDriver_shapefile.CreateDataSource(sFilename_shapefile_cut)
                         pLayerOut3 = pDataset3.CreateLayer(
                             "cell", pSpatialRef_target, ogr.wkbPolygon
                         )
@@ -262,12 +256,8 @@ def inject_dem_into_mpas_mesh_netcdf(
                     print("Polygon WKT:", pPolygon.ExportToWkt())
                     continue
                 else:
-                    pDataset3 = pDriver_shapefile.CreateDataSource(
-                        sFilename_shapefile_cut
-                    )
-                    pLayerOut3 = pDataset3.CreateLayer(
-                        "cell", pSpatialRef_target, ogr.wkbPolygon
-                    )
+                    pDataset3 = pDriver_shapefile.CreateDataSource(sFilename_shapefile_cut)
+                    pLayerOut3 = pDataset3.CreateLayer("cell", pSpatialRef_target, ogr.wkbPolygon)
                     pLayerDefn3 = pLayerOut3.GetLayerDefn()
                     pFeatureOut3 = ogr.Feature(pLayerDefn3)
                     pFeatureOut3.SetGeometry(pPolygon)
@@ -283,9 +273,7 @@ def inject_dem_into_mpas_mesh_netcdf(
                 format="MEM",
                 resampleAlg=sResampleAlg,
             )
-            pDataset_clip_warped = gdal.Warp(
-                "", aFilename_dem_masked, options=pWrapOption
-            )
+            pDataset_clip_warped = gdal.Warp("", aFilename_dem_masked, options=pWrapOption)
             aData_clip = pDataset_clip_warped.ReadAsArray()
             aData_clip[aData_clip == dMissing_value] = -9999
             dummy_index0 = np.where(aData_clip != -9999)
@@ -339,10 +327,10 @@ def inject_dem_into_mpas_mesh_netcdf(
 
 
 if __name__ == "__main__":
-    sFilename_mesh_netcdf = "/compyfs/liao313/04model/pyflowline/global/pyflowline20250101010/jigsaw/out/invert_mesh.nc"
-    sFilename_mesh_with_dem_netcdf = (
-        "/compyfs/liao313/00raw/mesh/global/hrm/mpas_with_land_dem3.nc"
+    sFilename_mesh_netcdf = (
+        "/compyfs/liao313/04model/pyflowline/global/pyflowline20250101010/jigsaw/out/invert_mesh.nc"
     )
+    sFilename_mesh_with_dem_netcdf = "/compyfs/liao313/00raw/mesh/global/hrm/mpas_with_land_dem3.nc"
     sWorkspace_dem_normal = "/compyfs/liao313/00raw/dem/global/gebco/normal"
     sWorkspace_dem_subice = "/compyfs/liao313/00raw/dem/global/gebco/sub_ice"
     # gebco_2024_n0.0_s-90.0_w0.0_e90.0.tif*
@@ -390,44 +378,28 @@ if __name__ == "__main__":
     # gebco_2024_sub_ice_n90.0_s0.0_w90.0_e180.0.tif*
     aFilename_dem_with_ice = list()
     aFilename_dem_with_ice.append(
-        os.path.join(
-            sWorkspace_dem_subice, "gebco_2024_sub_ice_n0.0_s-90.0_w0.0_e90.0.tif"
-        )
+        os.path.join(sWorkspace_dem_subice, "gebco_2024_sub_ice_n0.0_s-90.0_w0.0_e90.0.tif")
     )
     aFilename_dem_with_ice.append(
-        os.path.join(
-            sWorkspace_dem_subice, "gebco_2024_sub_ice_n0.0_s-90.0_w-180.0_e-90.0.tif"
-        )
+        os.path.join(sWorkspace_dem_subice, "gebco_2024_sub_ice_n0.0_s-90.0_w-180.0_e-90.0.tif")
     )
     aFilename_dem_with_ice.append(
-        os.path.join(
-            sWorkspace_dem_subice, "gebco_2024_sub_ice_n0.0_s-90.0_w-90.0_e0.0.tif"
-        )
+        os.path.join(sWorkspace_dem_subice, "gebco_2024_sub_ice_n0.0_s-90.0_w-90.0_e0.0.tif")
     )
     aFilename_dem_with_ice.append(
-        os.path.join(
-            sWorkspace_dem_subice, "gebco_2024_sub_ice_n0.0_s-90.0_w90.0_e180.0.tif"
-        )
+        os.path.join(sWorkspace_dem_subice, "gebco_2024_sub_ice_n0.0_s-90.0_w90.0_e180.0.tif")
     )
     aFilename_dem_with_ice.append(
-        os.path.join(
-            sWorkspace_dem_subice, "gebco_2024_sub_ice_n90.0_s0.0_w0.0_e90.0.tif"
-        )
+        os.path.join(sWorkspace_dem_subice, "gebco_2024_sub_ice_n90.0_s0.0_w0.0_e90.0.tif")
     )
     aFilename_dem_with_ice.append(
-        os.path.join(
-            sWorkspace_dem_subice, "gebco_2024_sub_ice_n90.0_s0.0_w-180.0_e-90.0.tif"
-        )
+        os.path.join(sWorkspace_dem_subice, "gebco_2024_sub_ice_n90.0_s0.0_w-180.0_e-90.0.tif")
     )
     aFilename_dem_with_ice.append(
-        os.path.join(
-            sWorkspace_dem_subice, "gebco_2024_sub_ice_n90.0_s0.0_w-90.0_e0.0.tif"
-        )
+        os.path.join(sWorkspace_dem_subice, "gebco_2024_sub_ice_n90.0_s0.0_w-90.0_e0.0.tif")
     )
     aFilename_dem_with_ice.append(
-        os.path.join(
-            sWorkspace_dem_subice, "gebco_2024_sub_ice_n90.0_s0.0_w90.0_e180.0.tif"
-        )
+        os.path.join(sWorkspace_dem_subice, "gebco_2024_sub_ice_n90.0_s0.0_w90.0_e180.0.tif")
     )
 
     inject_dem_into_mpas_mesh_netcdf(

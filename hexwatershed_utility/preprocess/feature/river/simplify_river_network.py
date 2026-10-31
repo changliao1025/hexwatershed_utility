@@ -2,13 +2,14 @@ import os
 import sys
 from collections import deque
 from datetime import datetime
+from typing import Optional
 
 import numpy as np
 from osgeo import gdal, ogr, osr
 from pyearth.gis.geometry.calculate_distance_based_on_longitude_latitude import (
     calculate_distance_based_on_longitude_latitude,
 )
-from pyearthbuffer.utility.create_gcs_buffer_zone import create_polyline_buffer_zone
+from pyearthbuffer import gcsbuffer
 from pyflowline.classes.rivergraph import pyrivergraph
 from pyflowline.configuration.change_json_key_value import change_json_key_value
 from pyflowline.configuration.config_manager import create_pyflowline_template_configuration_file
@@ -52,8 +53,7 @@ def precompute_flowline_geometries(aFlowlines, dDistance_tolerance):
     # buffer_cache = {}
     for i, pFlowline in enumerate(aFlowlines):
         wkt = pFlowline.wkt
-        wkt_buffer = create_polyline_buffer_zone(wkt, dDistance_tolerance)
-        pBuffer = ogr.CreateGeometryFromWkt(wkt_buffer)
+        pBuffer = gcsbuffer(wkt, distance=dDistance_tolerance, output_format="ogr")
         pBound0 = pBuffer.GetEnvelope()
         dLon_min, dLon_max, dLat_min, dLat_max = pBound0
         pBound = (dLon_min, dLat_min, dLon_max, dLat_max)
@@ -76,10 +76,7 @@ def precompute_flowline_geometries_by_segment(aFlowlines, dDistance_tolerance):
     # buffer_cache = {}
     for i, pFlowline in enumerate(aFlowlines):
         wkt = pFlowline.wkt
-        # if pFlowline.iStream_segment == 580:
-        #    print('debugging flowline: ', pFlowline.lFlowlineID, pFlowline.iStream_segment)
-        wkt_buffer = create_polyline_buffer_zone(wkt, dDistance_tolerance)
-        pBuffer = ogr.CreateGeometryFromWkt(wkt_buffer)
+        pBuffer = gcsbuffer(wkt, distance=dDistance_tolerance, output_format="ogr")
         pBound0 = pBuffer.GetEnvelope()
         dLon_min, dLon_max, dLat_min, dLat_max = pBound0
         pBound = (dLon_min, dLat_min, dLon_max, dLat_max)
@@ -88,7 +85,7 @@ def precompute_flowline_geometries_by_segment(aFlowlines, dDistance_tolerance):
     return bounds_cache  # , buffer_cache
 
 
-def simplify_hydrorivers_network(
+def simplify_river_network(
     sFilename_flowline_hydroshed_in: str,
     sFilename_flowline_hydroshed_out: str,
     dDistance_tolerance_in: float,
@@ -96,12 +93,19 @@ def simplify_hydrorivers_network(
     iFlag_endorheic_in: int = 0,
     iFlag_pyflowline_configuration_in: int = 1,
     nOutlet_largest: int = 10,
+    sCol_id: Optional[str] = None,
+    sCol_main_riv: Optional[str] = None,
+    sCol_stream_order: Optional[str] = None,
+    sCol_drainage_area: Optional[str] = None,
+    sCol_next_down: Optional[str] = None,
+    sCol_endorheic: Optional[str] = None,
+    dDrainage_area_multiplier: float = 1.0e6,
 ) -> int:
     """
     Simplify hydrological river networks by merging nearby flowlines and filtering by drainage area.
 
-    This function processes hydrographic flowline data from HydroSHEDS or similar sources and simplifies
-    the network by:
+    This function processes hydrographic flowline data from HydroRIVERS, NHDPlus, MERIT-Hydro,
+    or custom river network datasets and simplifies the network by:
     1. Filtering outlets by proximity and drainage area
     2. Building river network topology with confluences and stream order
     3. Simplifying upstream flowlines based on distance tolerance and drainage area thresholds
@@ -331,27 +335,60 @@ def simplify_hydrorivers_network(
     # Dictionary to store river names by MAIN_RIV ID
     river_name_dict = {}
 
+    # Resolve field names dynamically from layer
+    pLayerDefn_in = pLayer_shapefile.GetLayerDefn()
+    available_fields = [
+        pLayerDefn_in.GetFieldDefn(k).GetName() for k in range(pLayerDefn_in.GetFieldCount())
+    ]
+
+    col_id = sCol_id or next(
+        (c for c in ["HYRIV_ID", "COMID", "id", "ID"] if c in available_fields), None
+    )
+    col_main_riv = sCol_main_riv or next(
+        (c for c in ["MAIN_RIV", "BasinID", "basin_id"] if c in available_fields), col_id
+    )
+    col_stream_order = sCol_stream_order or next(
+        (c for c in ["ORD_STRA", "StreamOrde", "stream_order"] if c in available_fields), None
+    )
+    col_drainage_area = sCol_drainage_area or next(
+        (
+            c
+            for c in ["UPLAND_SKM", "TotDASqKM", "drainage_area", "drainage"]
+            if c in available_fields
+        ),
+        None,
+    )
+    col_next_down = sCol_next_down or next(
+        (c for c in ["NEXT_DOWN", "ToNode", "dnID", "downstream_id"] if c in available_fields), None
+    )
+    col_endorheic = sCol_endorheic or next(
+        (c for c in ["ENDORHEIC", "endorheic"] if c in available_fields), None
+    )
+
     # first we will find all the flowlines that flow into the ocean or inland sink
     for i, pFeature_shapefile in enumerate(pLayer_shapefile):
         fid = pFeature_shapefile.GetFID()
-        # pFeature_shapefile = pLayer_shapefile.GetFeature(i)
         pGeometry_shapefile = pFeature_shapefile.GetGeometryRef()
         sGeometry_type = pGeometry_shapefile.GetGeometryName()
-        lID = pFeature_shapefile.GetFieldAsInteger("HYRIV_ID")
+        lID = pFeature_shapefile.GetFieldAsInteger(col_id) if col_id else fid
 
-        lOutletID = pFeature_shapefile.GetFieldAsInteger("MAIN_RIV")
-        lStream_order = pFeature_shapefile.GetFieldAsInteger("ORD_STRA")
+        lOutletID = pFeature_shapefile.GetFieldAsInteger(col_main_riv) if col_main_riv else lID
+        lStream_order = (
+            pFeature_shapefile.GetFieldAsInteger(col_stream_order) if col_stream_order else 1
+        )
         # get the drainage area
         dDrainage_area = (
-            pFeature_shapefile.GetFieldAsDouble("UPLAND_SKM") * 1.0e6
+            pFeature_shapefile.GetFieldAsDouble(col_drainage_area) * dDrainage_area_multiplier
+            if col_drainage_area
+            else 0.0
         )  # unit: km^2 to m^2
         # get the flag whether it flows into the ocean
-        iFlag_edge = pFeature_shapefile.GetFieldAsInteger(
-            "NEXT_DOWN"
+        iFlag_edge = (
+            pFeature_shapefile.GetFieldAsInteger(col_next_down) if col_next_down else 0
         )  # 0 is ocean, non-0 is the id of next downstream flowline
         # get the flag whether it is an endorheic basin
-        iFlag_endorheic = pFeature_shapefile.GetFieldAsInteger(
-            "ENDORHEIC"
+        iFlag_endorheic = (
+            pFeature_shapefile.GetFieldAsInteger(col_endorheic) if col_endorheic else 0
         )  # 0 = not part of an endorheic basin; 1 = part of an endorheic basin.
 
         # Try to get river name - field might be in different formats
@@ -1282,3 +1319,8 @@ def simplify_hydrorivers_network(
 
     print(f"River name and drainage area logfile saved to: {sFilename_logfile}")
     return nOutlet_actual
+
+
+__all__ = [
+    "simplify_river_network",
+]

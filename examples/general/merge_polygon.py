@@ -32,9 +32,7 @@ for sFilename in aFilename:
 
     # Create new pLayerIn with the same spatial reference as the original
     pLayerOut = pDatasetOut.CreateLayer("lake", pSpatialRef, ogr.wkbPolygon)
-    pLayerOut.CreateField(
-        ogr.FieldDefn("lakeid", ogr.OFTInteger)
-    )  # long type for high resolution
+    pLayerOut.CreateField(ogr.FieldDefn("lakeid", ogr.OFTInteger))  # long type for high resolution
 
     pFeatureOut = ogr.Feature(pLayerOut.GetLayerDefn())
     # read all the features in the pLayerIn

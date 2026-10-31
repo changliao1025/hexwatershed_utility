@@ -2,9 +2,7 @@ import os
 import sys
 
 from pyearth.system.define_global_variables import *
-from pyearth.toolbox.conversion.convert_vector_to_geojson import (
-    convert_vector_to_geojson,
-)
+from pyearth.toolbox.conversion.convert_vector_to_geojson import convert_vector_to_geojson
 from pyearth.toolbox.conversion.convert_vector_to_global_raster import (
     convert_vector_to_global_raster,
 )
@@ -35,9 +33,7 @@ for sRegion in aRegion:
     sFilename = "hybas_lake_" + sRegion + "_lev03_v1c.shp"
     sWorkspace_hydroshed = sWorkspace_data + slash + sFolder
     sFilename_shp_in = os.path.join(sWorkspace_hydroshed, sFilename)
-    sFilename_geojson_out = os.path.join(
-        sWorkspace_data2, sFilename.replace(".shp", ".geojson")
-    )
+    sFilename_geojson_out = os.path.join(sWorkspace_data2, sFilename.replace(".shp", ".geojson"))
     # convert from shp to geojson
     # convert_vector_to_geojson(sFilename_shp_in, sFilename_geojson_out)
     aWatershed_boundary.append(sFilename_shp_in)

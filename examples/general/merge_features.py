@@ -48,11 +48,7 @@ def merge_features(sFilename_in, sFilename_out, sFormat="GeoJSON", iFlag_exterio
         return
     # get the geometry type
     iGeomType = pGeometry.GetGeometryType()
-    if (
-        iGeomType == ogr.wkbPoint
-        or iGeomType == ogr.wkbLineString
-        or iGeomType == ogr.wkbPolygon
-    ):
+    if iGeomType == ogr.wkbPoint or iGeomType == ogr.wkbLineString or iGeomType == ogr.wkbPolygon:
         # check whether it is a multi-geometry
         pass
     else:
@@ -86,9 +82,7 @@ def merge_features(sFilename_in, sFilename_out, sFormat="GeoJSON", iFlag_exterio
 
     if iGeomType == ogr.wkbPoint:
         # create the layer
-        pLayer_out = pDataset_out.CreateLayer(
-            "layer", pSpatial_reference, geom_type=ogr.wkbPoint
-        )
+        pLayer_out = pDataset_out.CreateLayer("layer", pSpatial_reference, geom_type=ogr.wkbPoint)
         pGeometry_merge = ogr.Geometry(ogr.wkbPoint)
     else:
         if iGeomType == ogr.wkbLineString:
@@ -142,9 +136,7 @@ def merge_features(sFilename_in, sFilename_out, sFormat="GeoJSON", iFlag_exterio
                         if iGeomType_single == iGeomType:
                             # calculate the area
                             aCoords_gcs = get_geometry_coordinates(pGeometry_single)
-                            dArea = calculate_polygon_area(
-                                aCoords_gcs[:, 0], aCoords_gcs[:, 1]
-                            )
+                            dArea = calculate_polygon_area(aCoords_gcs[:, 0], aCoords_gcs[:, 1])
                             aArea[i] = dArea
 
                     # get the index of the largest area
@@ -200,9 +192,7 @@ def merge_features(sFilename_in, sFilename_out, sFormat="GeoJSON", iFlag_exterio
         if pDataset_out is None:
             print("Dataset not created")
             return
-        pLayer_out = pDataset_out.CreateLayer(
-            "layer", pSpatial_reference, geom_type=ogr.wkbPolygon
-        )
+        pLayer_out = pDataset_out.CreateLayer("layer", pSpatial_reference, geom_type=ogr.wkbPolygon)
         pFeature_out = ogr.Feature(pLayer_out.GetLayerDefn())
         # dBuffer_threshold_in = -0.0001
         # pGeometry_out = pGeometry_out.Buffer(dBuffer_threshold_in)

@@ -21,6 +21,4 @@ from hexwatershed_utility.postprocess.land.convert_hexwatershed_outputs_land_inp
 sFilename_json_in = "/compyfs/liao313/04model/pyhexwatershed/global/pyhexwatershed20251208002/hexwatershed/hexwatershed.json"
 sFilename_land_domain_out = "/compyfs/liao313/04model/pyhexwatershed/global/pyhexwatershed20251208002/elm/elm_domain_from_hexwatershed.nc"
 
-convert_hexwatershed_json_to_land_domain_file(
-    sFilename_json_in, sFilename_land_domain_out
-)
+convert_hexwatershed_json_to_land_domain_file(sFilename_json_in, sFilename_land_domain_out)

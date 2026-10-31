@@ -9,6 +9,9 @@ except ImportError:
 
 from shapely.geometry import Polygon
 
+from examples.auxiliary.find_cells_on_vector_flowline import find_cells_on_vector_flowline
+from examples.auxiliary.find_downstream_cells import find_downstream_cells
+
 
 def make_dam_dependency(Dams, Mesh, searchradius, globalID, Mask, FlowLine):
     """

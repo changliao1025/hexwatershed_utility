@@ -6,9 +6,7 @@ import sys
 import numpy as np
 from osgeo import gdal, osr
 from pyearth.gis.gdal.read.raster.gdal_read_geotiff_file import gdal_read_geotiff_file
-from pyearth.gis.gdal.write.raster.gdal_write_geotiff_file import (
-    gdal_write_geotiff_file,
-)
+from pyearth.gis.gdal.write.raster.gdal_write_geotiff_file import gdal_write_geotiff_file
 from pyearth.gis.spatialref.reproject_coodinates import (
     reproject_coordinates,
     reproject_coordinates_batch,

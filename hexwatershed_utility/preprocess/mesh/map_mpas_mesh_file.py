@@ -205,9 +205,7 @@ def map_mpas_mesh_file(
     else:
         dLon_mean = dLongitude_center
         dLat_mean = dLatitude_center
-        pProjection_map = ccrs.Orthographic(
-            central_longitude=dLon_mean, central_latitude=dLat_mean
-        )
+        pProjection_map = ccrs.Orthographic(central_longitude=dLon_mean, central_latitude=dLat_mean)
         print(dLon_mean, dLat_mean)
 
     if pProjection_data_in is not None:
@@ -229,9 +227,7 @@ def map_mpas_mesh_file(
             iBasemap_zoom_level = iBasemap_zoom_level_in
         else:
             image_size = [1000, 1000]
-            scale_denominator = RasterTileServer.calculate_scale_denominator(
-                aExtent, image_size
-            )
+            scale_denominator = RasterTileServer.calculate_scale_denominator(aExtent, image_size)
             pSrc = osr.SpatialReference()
             pSrc.ImportFromEPSG(3857)  # mercator
             pProjection = pSrc.ExportToWkt()
@@ -262,9 +258,7 @@ def map_mpas_mesh_file(
                 else:
                     # Use RasterTileServer for custom providers
                     pTile_service = RasterTileServer(sBasemap_provider)
-                    pTiles = pTile_service.get_cartopy_source_with_supersample(
-                        supersample=2
-                    )
+                    pTiles = pTile_service.get_cartopy_source_with_supersample(supersample=2)
                     # For supersample, use higher zoom level and interpolation
                     ax.add_image(
                         pTiles,
@@ -277,9 +271,7 @@ def map_mpas_mesh_file(
             # Combine all license info and display once
             if aLicense_info_list:
                 sLicense_info = " | ".join(aLicense_info_list)
-                sLicense_info_wrapped = "\n".join(
-                    textwrap.wrap(sLicense_info, width=cwidth)
-                )
+                sLicense_info_wrapped = "\n".join(textwrap.wrap(sLicense_info, width=cwidth))
                 ax.text(
                     0.5,
                     0.05,
@@ -289,9 +281,7 @@ def map_mpas_mesh_file(
                     va="center",
                     fontsize=6,
                     color="gray",
-                    bbox=dict(
-                        facecolor="white", edgecolor="black", boxstyle="round,pad=0.3"
-                    ),
+                    bbox=dict(facecolor="white", edgecolor="black", boxstyle="round,pad=0.3"),
                 )
             dAlpha = 0.5
 
@@ -311,16 +301,12 @@ def map_mpas_mesh_file(
 
     # Find cells within the extent (using cell centers as initial filter)
     aCell_mask = np.logical_and(
-        np.logical_and(
-            aLongitudeCell_180 >= minx_buffered, aLongitudeCell_180 <= maxx_buffered
-        ),
+        np.logical_and(aLongitudeCell_180 >= minx_buffered, aLongitudeCell_180 <= maxx_buffered),
         np.logical_and(aLatitudeCell >= miny_buffered, aLatitudeCell <= maxy_buffered),
     )
     aCell_indices = np.where(aCell_mask)[0]
 
-    print(
-        f"Processing {len(aCell_indices)} cells out of {nCell} total cells within extent"
-    )
+    print(f"Processing {len(aCell_indices)} cells out of {nCell} total cells within extent")
 
     aPolygon = list()
     aEdgecolor = list()

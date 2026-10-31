@@ -1,14 +1,13 @@
 """
-Boundary pre-processing utilities.
+Boundary pre-processing and download utilities.
 """
 
-__all__ = []
+from hexwatershed_utility.preprocess.feature.boundary.download_boundary import (
+    download_boundary,
+    download_conus_boundary,
+)
 
-try:
-    from hexwatershed_utility.preprocess.feature.boundary.download_conus_boundary import (
-        download_conus_boundary,
-    )
-
-    __all__.append("download_conus_boundary")
-except ImportError:
-    pass
+__all__ = [
+    "download_boundary",
+    "download_conus_boundary",
+]

@@ -66,7 +66,9 @@ def inject_dem_into_mpas_mesh_netcdf(
 
 
 if __name__ == "__main__":
-    sFilename_mesh_netcdf = "/compyfs/liao313/04model/pyflowline/conus/pyflowline20241201019/jigsaw/out/invert_mesh.nc"
+    sFilename_mesh_netcdf = (
+        "/compyfs/liao313/04model/pyflowline/conus/pyflowline20241201019/jigsaw/out/invert_mesh.nc"
+    )
     sFilename_mesh_with_dem_netcdf = (
         "/compyfs/liao313/00raw/mesh/global/hrm/mpas_with_land_elevation.nc"
     )

@@ -4,10 +4,76 @@ from typing import Optional, Sequence
 
 from osgeo import ogr, osr
 from pyearth.gis.gdal.gdal_vector_format_support import get_vector_driver_from_filename
+from pyearth.gis.geometry.clean_ring_spikes import clean_ring_spikes
 from pyearth.toolbox.management.vector.merge_features import merge_features
 from pyearth.toolbox.management.vector.merge_vector_files import merge_vector_files
+from pyearth.toolbox.management.vector.remove_internal_polygon import remove_internal_polygon
 
 logger = logging.getLogger(__name__)
+
+
+def _delete_vector_safely(sFilename: str) -> None:
+    """Safely delete a vector file and any driver sidecar files."""
+    if not os.path.exists(sFilename):
+        return
+    pDriver = get_vector_driver_from_filename(sFilename)
+    if pDriver is not None:
+        try:
+            pDriver.DeleteDataSource(sFilename)
+            return
+        except Exception:
+            pass
+    if os.path.exists(sFilename):
+        try:
+            os.remove(sFilename)
+        except Exception:
+            pass
+
+
+def _keep_outer_rings_geometry(oGeom: ogr.Geometry) -> ogr.Geometry:
+    """
+    Rebuild geometry keeping only exterior rings and removing all interior holes and spikes.
+
+    Parameters
+    ----------
+    oGeom : ogr.Geometry
+        Input Polygon or MultiPolygon geometry.
+
+    Returns
+    -------
+    ogr.Geometry
+        Cleaned geometry containing only exterior rings without internal retracing spikes.
+    """
+    if oGeom is None or oGeom.IsEmpty():
+        return oGeom
+
+    geom_type = oGeom.GetGeometryType()
+
+    if geom_type in (ogr.wkbPolygon, ogr.wkbPolygon25D):
+        oClean = ogr.Geometry(ogr.wkbPolygon)
+        if oGeom.GetGeometryCount() > 0:
+            pOuter = oGeom.GetGeometryRef(0)
+            if pOuter is not None:
+                pCleanRing = clean_ring_spikes(pOuter)
+                if pCleanRing is not None:
+                    oClean.AddGeometry(pCleanRing)
+        return oClean
+
+    elif geom_type in (ogr.wkbMultiPolygon, ogr.wkbMultiPolygon25D):
+        oClean = ogr.Geometry(ogr.wkbMultiPolygon)
+        for i in range(oGeom.GetGeometryCount()):
+            pPart = oGeom.GetGeometryRef(i)
+            if pPart is not None and pPart.GetGeometryCount() > 0:
+                pOuter = pPart.GetGeometryRef(0)
+                if pOuter is not None:
+                    pCleanRing = clean_ring_spikes(pOuter)
+                    if pCleanRing is not None:
+                        pPartClean = ogr.Geometry(ogr.wkbPolygon)
+                        pPartClean.AddGeometry(pCleanRing)
+                        oClean.AddGeometry(pPartClean)
+        return oClean
+
+    return oGeom.Clone()
 
 
 def _extract_unique_polygons(aPolygons):
@@ -78,10 +144,12 @@ def merge_boundary_polygons(
     aWkt_in: Sequence[str],
     sFilename_out: Optional[str] = None,
     iFlag_union: bool = True,
+    iFlag_keep_outer_ring_only: bool = True,
 ) -> str:
     """
     Deduplicate and merge watershed boundary polygon WKTs into a single MultiPolygon,
-    optionally unioning contiguous/overlapping polygons into a single dissolved feature.
+    optionally unioning contiguous/overlapping polygons into a single dissolved feature
+    and retaining only the outer boundary ring.
 
     Parameters
     ----------
@@ -92,6 +160,9 @@ def merge_boundary_polygons(
     iFlag_union : bool, default=True
         If True, union and dissolve overlapping or contiguous polygons into a single
         unified boundary. If False, aggregate deduplicated polygons without dissolving.
+    iFlag_keep_outer_ring_only : bool, default=True
+        If True, strips all internal holes/rings caused by subbasin gaps and retains
+        only the exterior boundary. Default is True.
 
     Returns
     -------
@@ -149,6 +220,9 @@ def merge_boundary_polygons(
             if oPolygon.IsValid() and not oPolygon.IsEmpty():
                 oFinalGeom.AddGeometry(oPolygon)
 
+    if iFlag_keep_outer_ring_only:
+        oFinalGeom = _keep_outer_rings_geometry(oFinalGeom)
+
     sWkt_out = oFinalGeom.ExportToWkt()
 
     if sFilename_out is not None:
@@ -185,13 +259,15 @@ def merge_boundary_files(
     aBoundary_files: Sequence[str],
     sFilename_out: str,
     iFlag_union: bool = True,
+    iFlag_keep_outer_ring_only: bool = True,
 ) -> str:
     """
     Merge multiple boundary polygon vector files into a single output file,
     unioning/dissolving features into a single continuous watershed boundary.
 
     Uses `pyearth`'s `merge_vector_files` and `merge_features` APIs to union
-    and dissolve internal boundaries between subbasins.
+    and dissolve internal boundaries between subbasins, and optionally cleans
+    up internal sliver holes to retain only the exterior outer ring.
 
     Parameters
     ----------
@@ -203,6 +279,9 @@ def merge_boundary_files(
         If True, union and dissolve all subbasin features into a single continuous
         watershed boundary feature using pyearth.merge_features.
         If False, concatenate all features into one file without dissolving.
+    iFlag_keep_outer_ring_only : bool, default=True
+        If True, removes all interior rings/slivers from the merged watershed
+        boundary, keeping only the outer ring boundary. Default is True.
 
     Returns
     -------
@@ -216,36 +295,56 @@ def merge_boundary_files(
     if sDir_out and not os.path.exists(sDir_out):
         os.makedirs(sDir_out, exist_ok=True)
 
+    sExt = os.path.splitext(sFilename_out)[1] or ".geojson"
+    sBase = os.path.splitext(os.path.basename(sFilename_out))[0]
+
     if not iFlag_union:
-        merge_vector_files(aBoundary_files, sFilename_out)
+        if iFlag_keep_outer_ring_only:
+            sFilename_tmp = os.path.join(sDir_out or ".", f"{sBase}_merged_tmp{sExt}")
+            try:
+                merge_vector_files(aBoundary_files, sFilename_tmp)
+                remove_internal_polygon(sFilename_tmp, sFilename_out, verbose=False)
+            finally:
+                _delete_vector_safely(sFilename_tmp)
+        else:
+            merge_vector_files(aBoundary_files, sFilename_out)
         return sFilename_out
 
     if len(aBoundary_files) == 1:
-        merge_features(aBoundary_files[0], sFilename_out)
+        if iFlag_keep_outer_ring_only:
+            sFilename_tmp = os.path.join(sDir_out or ".", f"{sBase}_union_tmp{sExt}")
+            try:
+                merge_features(aBoundary_files[0], sFilename_tmp)
+                remove_internal_polygon(sFilename_tmp, sFilename_out, verbose=False)
+            finally:
+                _delete_vector_safely(sFilename_tmp)
+        else:
+            merge_features(aBoundary_files[0], sFilename_out)
         return sFilename_out
 
-    # Multiple files: merge into intermediate file, then union features into one
-    sExt = os.path.splitext(sFilename_out)[1] or ".geojson"
-    sBase = os.path.splitext(os.path.basename(sFilename_out))[0]
-    sFilename_tmp = os.path.join(sDir_out or ".", f"{sBase}_raw_merge{sExt}")
+    # Multiple files: merge into intermediate file, union features, then clean outer ring
+    sFilename_raw = os.path.join(sDir_out or ".", f"{sBase}_raw_merge{sExt}")
+    sFilename_union = (
+        os.path.join(sDir_out or ".", f"{sBase}_union_raw{sExt}")
+        if iFlag_keep_outer_ring_only
+        else sFilename_out
+    )
 
     try:
-        merge_vector_files(aBoundary_files, sFilename_tmp)
-        merge_features(sFilename_tmp, sFilename_out)
+        merge_vector_files(aBoundary_files, sFilename_raw)
+        merge_features(sFilename_raw, sFilename_union)
+        if iFlag_keep_outer_ring_only:
+            remove_internal_polygon(sFilename_union, sFilename_out, verbose=False)
     finally:
-        if os.path.exists(sFilename_tmp):
-            pDriver = get_vector_driver_from_filename(sFilename_tmp)
-            if pDriver is not None:
-                try:
-                    pDriver.DeleteDataSource(sFilename_tmp)
-                except Exception:
-                    if os.path.exists(sFilename_tmp):
-                        os.remove(sFilename_tmp)
-            elif os.path.exists(sFilename_tmp):
-                os.remove(sFilename_tmp)
+        _delete_vector_safely(sFilename_raw)
+        if iFlag_keep_outer_ring_only:
+            _delete_vector_safely(sFilename_union)
 
     logger.info(
-        "Merged and unioned %d boundary file(s) into: %s", len(aBoundary_files), sFilename_out
+        "Merged and unioned %d boundary file(s) into: %s (keep_outer_ring_only=%s)",
+        len(aBoundary_files),
+        sFilename_out,
+        iFlag_keep_outer_ring_only,
     )
     return sFilename_out
 

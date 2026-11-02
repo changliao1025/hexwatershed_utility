@@ -5,9 +5,13 @@ import unittest
 from osgeo import ogr, osr
 
 from hexwatershed_utility.preprocess.feature.coastline import (
+    create_land_ocean_mask,
     create_land_ocean_mask_from_basins,
+    create_land_ocean_mask_from_naturalearth,
     create_land_ocean_mask_from_shoreline,
     extend_land_mask_to_rivers,
+    fix_naturalearth_hydrosheds_incompatibility,
+    geometries_bbox_overlap,
     remove_internal_polygon,
 )
 
@@ -22,8 +26,19 @@ class TestCoastline(unittest.TestCase):
     def test_callables_exist(self):
         self.assertTrue(callable(create_land_ocean_mask_from_basins))
         self.assertTrue(callable(create_land_ocean_mask_from_shoreline))
+        self.assertTrue(callable(create_land_ocean_mask_from_naturalearth))
+        self.assertTrue(callable(create_land_ocean_mask))
         self.assertTrue(callable(extend_land_mask_to_rivers))
+        self.assertTrue(callable(fix_naturalearth_hydrosheds_incompatibility))
+        self.assertTrue(callable(geometries_bbox_overlap))
         self.assertTrue(callable(remove_internal_polygon))
+
+    def test_geometries_bbox_overlap(self):
+        bbox1 = (0.0, 10.0, 0.0, 10.0)
+        bbox2 = (5.0, 15.0, 5.0, 15.0)
+        bbox3 = (20.0, 30.0, 20.0, 30.0)
+        self.assertTrue(geometries_bbox_overlap(bbox1, bbox2))
+        self.assertFalse(geometries_bbox_overlap(bbox1, bbox3))
 
     def test_extend_land_mask_file_not_found(self):
         with self.assertRaises(FileNotFoundError):

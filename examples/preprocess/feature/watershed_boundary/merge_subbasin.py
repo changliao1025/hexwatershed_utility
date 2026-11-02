@@ -11,6 +11,8 @@ aFilename.append("/Users/changliao/data/hexwatershed/yellowriver/vector/basin_bo
 aFilename.append("/Users/changliao/data/hexwatershed/yellowriver/vector/basin_boundary/03.geojson")
 aFilename.append("/Users/changliao/data/hexwatershed/yellowriver/vector/basin_boundary/04.geojson")
 aFilename.append("/Users/changliao/data/hexwatershed/yellowriver/vector/basin_boundary/05.geojson")
+aFilename.append("/Users/changliao/data/hexwatershed/yellowriver/vector/basin_boundary/06.geojson")
+aFilename.append("/Users/changliao/data/hexwatershed/yellowriver/vector/basin_boundary/07.geojson")
 
 
 merge_boundary_files(

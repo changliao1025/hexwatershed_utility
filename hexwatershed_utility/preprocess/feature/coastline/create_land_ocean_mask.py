@@ -22,7 +22,7 @@ from pyearthbuffer import gcsbuffer_file
 logger = logging.getLogger(__name__)
 
 
-def create_land_ocean_mask_from_basins(
+def create_land_ocean_mask_from_hydrobasins(
     sWorkspace_output: str,
     aBoundary_files: Optional[Sequence[str]] = None,
     sFolder_boundary_in: Optional[str] = None,
@@ -240,8 +240,32 @@ def create_land_ocean_mask_from_shoreline(
     return sFilename_fixed, sFilename_vector_processed
 
 
+def create_land_ocean_mask_from_naturalearth(
+    sWorkspace_coastline_output: str,
+    dResolution_x_in: float = 30 / 3600.0,
+    dResolution_y_in: float = 30 / 3600.0,
+    dThreshold_area_island: float = 1000.0,
+    dResolution_coastline_buffer: float = 10.0,
+    iRaster_buffer_pixel: int = 1,
+) -> Tuple[str, str]:
+    """Create land-ocean mask from Natural Earth dataset."""
+    return create_land_ocean_mask_from_shoreline(
+        sWorkspace_output=sWorkspace_coastline_output,
+        sFilename_land_vector_in=None,
+        dResolution_x=dResolution_x_in,
+        dResolution_y=dResolution_y_in,
+        dThreshold_area_island=dThreshold_area_island,
+        iRaster_buffer_pixel=iRaster_buffer_pixel,
+        iFlag_remove_internal_rings=True,
+    )
+
+
+create_land_ocean_mask = create_land_ocean_mask_from_naturalearth
+
 __all__ = [
-    "create_land_ocean_mask_from_basins",
+    "create_land_ocean_mask",
+    "create_land_ocean_mask_from_hydrobasins",
+    "create_land_ocean_mask_from_naturalearth",
     "create_land_ocean_mask_from_shoreline",
     "remove_internal_polygon",
 ]

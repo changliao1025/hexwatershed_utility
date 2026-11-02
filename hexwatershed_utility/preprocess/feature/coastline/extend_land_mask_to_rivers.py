@@ -8,6 +8,7 @@ from pyearth.gis.geometry.calculate_distance_based_on_longitude_latitude import 
     calculate_distance_based_on_longitude_latitude,
 )
 from pyearth.toolbox.management.vector.merge_features import merge_features
+from pyearth.toolbox.management.vector.remove_internal_polygon import remove_internal_polygon
 from pyearthbuffer import gcsbuffer
 
 try:
@@ -35,6 +36,7 @@ def extend_land_mask_to_rivers(
     aFilename_flowlines: Sequence[str],
     sFilename_vector_land: str,
     sFilename_vector_land_updated: str,
+    iFlag_remove_internal_rings: bool = False,
 ) -> str:
     """
     Extend a land polygon mask to encompass coastal river flowlines that protrude into the ocean.
@@ -51,6 +53,8 @@ def extend_land_mask_to_rivers(
         Path to input land polygon vector file (e.g. Natural Earth or custom coastline).
     sFilename_vector_land_updated : str
         Path to output updated land polygon vector file.
+    iFlag_remove_internal_rings : bool, default=False
+        If True, removes interior rings (inland holes) after merging buffer zones.
 
     Returns
     -------
@@ -143,44 +147,68 @@ def extend_land_mask_to_rivers(
                     if _bbox_overlap(flowline_envelope, land_envelope):
                         candidate_indices.append(idx)
 
+            bIntersects_land = False
             whole_flowline = pGeometry_flowline.Clone()
+            whole_flowline.FlattenTo2D()
 
             for candidate_idx in candidate_indices:
                 if candidate_idx >= len(land_geometries):
                     continue
+                if whole_flowline is None or whole_flowline.IsEmpty():
+                    break
+
                 pGeometry_land = land_geometries[candidate_idx]
                 if pGeometry_land is None:
                     continue
 
                 if whole_flowline.Intersects(pGeometry_land):
+                    bIntersects_land = True
                     outside_part = whole_flowline.Difference(pGeometry_land)
                     if outside_part is not None and not outside_part.IsEmpty():
-                        outside_flowline = outside_part.Clone()
-                        outside_flowline.FlattenTo2D()
-                        sGeometry_type = outside_flowline.GetGeometryName().upper()
+                        outside_part.FlattenTo2D()
+                        whole_flowline = outside_part
+                    else:
+                        whole_flowline = None
+                        break
 
-                        lines_to_buffer = []
-                        if sGeometry_type == "LINESTRING":
-                            lines_to_buffer.append(outside_flowline)
-                        elif sGeometry_type == "MULTILINESTRING":
-                            for k in range(outside_flowline.GetGeometryCount()):
-                                sub_line = outside_flowline.GetGeometryRef(k)
-                                if sub_line is not None and not sub_line.IsEmpty():
-                                    lines_to_buffer.append(sub_line)
+            lines_to_buffer = []
+            if bIntersects_land and whole_flowline is not None and not whole_flowline.IsEmpty():
+                outside_flowline = whole_flowline
+                sGeometry_type = outside_flowline.GetGeometryName().upper()
+                if sGeometry_type == "LINESTRING":
+                    lines_to_buffer.append(outside_flowline)
+                elif sGeometry_type == "MULTILINESTRING":
+                    for k in range(outside_flowline.GetGeometryCount()):
+                        sub_line = outside_flowline.GetGeometryRef(k)
+                        if sub_line is not None and not sub_line.IsEmpty():
+                            lines_to_buffer.append(sub_line)
+            elif not bIntersects_land:
+                outside_flowline = pGeometry_flowline.Clone()
+                outside_flowline.FlattenTo2D()
+                sGeometry_type = outside_flowline.GetGeometryName().upper()
+                if sGeometry_type == "LINESTRING":
+                    lines_to_buffer.append(outside_flowline)
+                elif sGeometry_type == "MULTILINESTRING":
+                    for k in range(outside_flowline.GetGeometryCount()):
+                        sub_line = outside_flowline.GetGeometryRef(k)
+                        if sub_line is not None and not sub_line.IsEmpty():
+                            lines_to_buffer.append(sub_line)
 
-                        for line in lines_to_buffer:
-                            pt_count = line.GetPointCount()
-                            if pt_count < 2:
-                                continue
-                            p_start = line.GetPoint(0)
-                            p_end = line.GetPoint(pt_count - 1)
-                            distance = calculate_distance_based_on_longitude_latitude(
-                                p_start[0], p_start[1], p_end[0], p_end[1]
-                            )
-                            buf_distance = max(distance / 2.0, 1.0)
-                            pBuf_geom = gcsbuffer(line, distance=buf_distance, output_format="ogr")
-                            if pBuf_geom is not None and not pBuf_geom.IsEmpty():
-                                aBuffer_geometries.append(pBuf_geom)
+            for line in lines_to_buffer:
+                pt_count = line.GetPointCount()
+                if pt_count < 2:
+                    continue
+                p_start = line.GetPoint(0)
+                p_end = line.GetPoint(pt_count - 1)
+                distance = calculate_distance_based_on_longitude_latitude(
+                    p_start[0], p_start[1], p_end[0], p_end[1]
+                )
+                if distance <= 0:
+                    continue
+                buf_distance = max(distance / 2.0, 1.0)
+                pBuf_geom = gcsbuffer(line, distance=buf_distance, output_format="ogr")
+                if pBuf_geom is not None and not pBuf_geom.IsEmpty():
+                    aBuffer_geometries.append(pBuf_geom)
 
         pDataset_flowline = None
 
@@ -228,7 +256,18 @@ def extend_land_mask_to_rivers(
     pDataset_land = None
 
     # Merge / dissolve overlapping features into clean output
-    merge_features(sTmp_path, sFilename_vector_land_updated)
+    if iFlag_remove_internal_rings:
+        sTmp_merged = os.path.join(sDir_out or ".", f"{sBase}_tmp_merged{sExt}")
+        merge_features(sTmp_path, sTmp_merged)
+        remove_internal_polygon(sTmp_merged, sFilename_vector_land_updated)
+        if os.path.exists(sTmp_merged):
+            try:
+                pDriver.DeleteDataSource(sTmp_merged)
+            except Exception:
+                pass
+    else:
+        merge_features(sTmp_path, sFilename_vector_land_updated)
+
     if os.path.exists(sTmp_path):
         try:
             pDriver.DeleteDataSource(sTmp_path)
@@ -243,6 +282,15 @@ def extend_land_mask_to_rivers(
     return sFilename_vector_land_updated
 
 
+def geometries_bbox_overlap(bbox1: tuple, bbox2: tuple, tolerance: float = 1e-10) -> bool:
+    """Check if two bounding boxes (minX, maxX, minY, maxY) overlap with optional tolerance."""
+    return _bbox_overlap(bbox1, bbox2, tolerance=tolerance)
+
+
+fix_naturalearth_hydrosheds_incompatibility = extend_land_mask_to_rivers
+
 __all__ = [
     "extend_land_mask_to_rivers",
+    "fix_naturalearth_hydrosheds_incompatibility",
+    "geometries_bbox_overlap",
 ]

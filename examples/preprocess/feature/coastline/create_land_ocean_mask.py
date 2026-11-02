@@ -5,14 +5,11 @@ shoreline vector data (e.g. Natural Earth) or basin boundaries (e.g. HydroBASINS
 
 import os
 
-from hexwatershed_utility.preprocess.feature.coastline import (
-    create_land_ocean_mask_from_basins,
-    create_land_ocean_mask_from_shoreline,
-)
+from hexwatershed_utility.preprocess.feature.coastline import create_land_ocean_mask_from_shoreline
 
 
 def main():
-    sWorkspace_output = os.path.expanduser("~/tmp/coastline_mask_example")
+    sWorkspace_output = os.path.expanduser("/Users/changliao/data/hexwatershed/global/coastline")
     os.makedirs(sWorkspace_output, exist_ok=True)
 
     # Example 1: Generate land-ocean mask from shoreline vector data

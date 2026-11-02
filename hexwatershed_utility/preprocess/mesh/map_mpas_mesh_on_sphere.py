@@ -202,23 +202,7 @@ def map_mpas_mesh_on_sphere(
         )
 
         aValid_cell_indices = np.arange(len(aCellID))
-
-        if sVariable_to_plot is not None and sVariable_to_plot in pDataset.variables:
-            try:
-                variable_data = pDataset.variables[sVariable_to_plot][:]
-                if variable_data.shape[0] != len(aCellID):
-                    logger.error(
-                        f"Variable {sVariable_to_plot} length does not match number of cells"
-                    )
-                    return False
-                pMesh.cell_data[sVariable_to_plot] = np.sqrt(variable_data)
-                sScalar = sVariable_to_plot
-            except Exception as e:
-                logger.error(f"Error reading variable {sVariable_to_plot} from dataset: {e}")
-                return False
-        else:
-            sScalar = "Cell ID"
-            pMesh.cell_data[sScalar] = aCellID
+        pMesh.cell_data["Cell ID"] = aCellID
 
         config_static = VisualizationConfig(
             longitude_focus=dLongitude_focus_in,
@@ -247,17 +231,6 @@ def map_mpas_mesh_on_sphere(
             if iFlag_create_animation
             else None
         )
-        scalar_config = ScalarBarConfig(
-            title=sScalar,
-            title_font_size=scaled_font_size,
-            label_font_size=scaled_font_size,
-            position_x=0.8,
-            position_y=0.25,
-            orientation="vertical",
-            n_labels=5,
-        )
-
-        config_colorbar = scalar_config if sVariable_to_plot is not None else None
 
         if iFlag_wireframe_only:
             style = "wireframe"
@@ -268,6 +241,47 @@ def map_mpas_mesh_on_sphere(
             if config_static.verbose:
                 logger.info("Using surface visualization mode")
 
+        if sVariable_to_plot is not None:
+            if sVariable_to_plot in pDataset.variables:
+                try:
+                    variable_data = pDataset.variables[sVariable_to_plot][:]
+                    if variable_data.shape[0] != len(aCellID):
+                        logger.error(
+                            f"Variable {sVariable_to_plot} length does not match number of cells"
+                        )
+                        pDataset.close()
+                        return False
+                    pMesh.cell_data[sVariable_to_plot] = np.sqrt(variable_data)
+                    sScalar = sVariable_to_plot
+                except Exception as e:
+                    logger.error(f"Error reading variable {sVariable_to_plot} from dataset: {e}")
+                    pDataset.close()
+                    return False
+
+                scalar_config = ScalarBarConfig(
+                    title=sScalar,
+                    title_font_size=scaled_font_size,
+                    label_font_size=scaled_font_size,
+                    position_x=0.8,
+                    position_y=0.25,
+                    orientation="vertical",
+                    n_labels=5,
+                )
+                config_colorbar = scalar_config
+            else:
+                logger.warning(
+                    f"Variable {sVariable_to_plot} not found in dataset. Rendering without variable coloring."
+                )
+                sScalar = None
+                config_colorbar = None
+        else:
+            # sVariable_to_plot is None: render without variable coloring and without colorbar.
+            # In wireframe mode, uses static edge color (sEdge_color).
+            sScalar = None
+            config_colorbar = None
+
+        pDataset.close()
+
         # Handle animation vs single frame visualization
         if config_anima is not None:
             animate_rotating_frames(
@@ -276,8 +290,12 @@ def map_mpas_mesh_on_sphere(
                 config_static,
                 config_anima,
                 style=style,
+                sScalar=sScalar,
                 sFilename_out=sFilename_out,
                 scalar_config=config_colorbar,
+                color=sEdge_color,
+                edge_color=sEdge_color,
+                line_width=dEdge_width,
             )
         else:
             map_single_frame(
@@ -288,6 +306,9 @@ def map_mpas_mesh_on_sphere(
                 style=style,
                 sFilename_out=sFilename_out,
                 scalar_config=config_colorbar,
+                color=sEdge_color,
+                edge_color=sEdge_color,
+                line_width=dEdge_width,
             )
 
         return True

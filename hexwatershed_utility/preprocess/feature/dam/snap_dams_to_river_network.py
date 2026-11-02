@@ -4,8 +4,8 @@ from typing import Dict, Optional
 
 from osgeo import ogr, osr
 from pyearth.gis.gdal.gdal_vector_format_support import get_vector_driver_from_filename
-from pyflowline.classes.vertex import pyvertex
-from pyflowline.formats.read_flowline import read_flowline_geojson
+from pyearth.toolbox.mesh.vertex import pyvertex
+from pyflowline.formats.read_flowline import read_flowline_vector
 from rtree.index import Index as RTreeindex
 
 logger = logging.getLogger(__name__)
@@ -124,7 +124,7 @@ def snap_dams_to_river_network(
     pLayerDefn_on = pLayer_on.GetLayerDefn()
     pLayerDefn_merged = pLayer_merged.GetLayerDefn()
 
-    aFlowline, _ = read_flowline_geojson(sFilename_river)
+    aFlowline, _ = read_flowline_vector(sFilename_river)
     nFlowline = len(aFlowline)
 
     index_flowline = RTreeindex()

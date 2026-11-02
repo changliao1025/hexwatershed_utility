@@ -10,8 +10,8 @@ from pyearth.gis.geometry.calculate_distance_based_on_longitude_latitude import 
     calculate_distance_based_on_longitude_latitude,
 )
 from pyearthbuffer import gcsbuffer
-from pyflowline.classes.rivergraph import pyrivergraph
-from pyflowline.configuration.change_json_key_value import change_json_key_value
+from pyearthriver.classes.rivergraph import pyrivergraph
+from pyflowline.configuration.change_config_key_value import change_json_key_value
 from pyflowline.configuration.config_manager import create_pyflowline_template_configuration_file
 from pyflowline.formats.convert_coordinates import convert_gcs_coordinates_to_flowline
 from pyflowline.formats.export_flowline import export_flowline_to_geojson
@@ -91,7 +91,7 @@ def simplify_river_network(
     dDistance_tolerance_in: float,
     dDrainage_area_threshold_in: float,
     iFlag_endorheic_in: int = 0,
-    iFlag_pyflowline_configuration_in: int = 1,
+    iFlag_pyflowline_configuration_in: int = 0,
     nOutlet_largest: int = 10,
     sCol_id: Optional[str] = None,
     sCol_main_riv: Optional[str] = None,

@@ -5,6 +5,7 @@ import unittest
 from osgeo import ogr, osr
 
 from hexwatershed_utility.preprocess.feature.river import (
+    crop_river_network_by_boundary,
     get_outlet_location,
     simplify_river_network,
     tag_river_outlet,
@@ -19,9 +20,16 @@ class TestRiver(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def test_callables_exist(self):
+        self.assertTrue(callable(crop_river_network_by_boundary))
         self.assertTrue(callable(get_outlet_location))
         self.assertTrue(callable(simplify_river_network))
         self.assertTrue(callable(tag_river_outlet))
+
+    def test_crop_river_network_by_boundary_file_not_found(self):
+        with self.assertRaises(FileNotFoundError):
+            crop_river_network_by_boundary(
+                "non_existent_river.geojson", "boundary.geojson", "out.geojson"
+            )
 
     def test_get_outlet_location_file_not_found(self):
         with self.assertRaises(FileNotFoundError):

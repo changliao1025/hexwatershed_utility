@@ -287,10 +287,7 @@ def geometries_bbox_overlap(bbox1: tuple, bbox2: tuple, tolerance: float = 1e-10
     return _bbox_overlap(bbox1, bbox2, tolerance=tolerance)
 
 
-fix_naturalearth_hydrosheds_incompatibility = extend_land_mask_to_rivers
-
 __all__ = [
     "extend_land_mask_to_rivers",
-    "fix_naturalearth_hydrosheds_incompatibility",
     "geometries_bbox_overlap",
 ]

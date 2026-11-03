@@ -3,16 +3,13 @@ import tempfile
 import unittest
 
 from osgeo import ogr, osr
+from pyearth.toolbox.management.vector.remove_internal_polygon import remove_internal_polygon
 
 from hexwatershed_utility.preprocess.feature.coastline import (
-    create_land_ocean_mask,
-    create_land_ocean_mask_from_basins,
+    create_land_ocean_mask_from_hydrobasins,
     create_land_ocean_mask_from_naturalearth,
-    create_land_ocean_mask_from_shoreline,
     extend_land_mask_to_rivers,
-    fix_naturalearth_hydrosheds_incompatibility,
     geometries_bbox_overlap,
-    remove_internal_polygon,
 )
 
 
@@ -24,14 +21,10 @@ class TestCoastline(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def test_callables_exist(self):
-        self.assertTrue(callable(create_land_ocean_mask_from_basins))
-        self.assertTrue(callable(create_land_ocean_mask_from_shoreline))
+        self.assertTrue(callable(create_land_ocean_mask_from_hydrobasins))
         self.assertTrue(callable(create_land_ocean_mask_from_naturalearth))
-        self.assertTrue(callable(create_land_ocean_mask))
         self.assertTrue(callable(extend_land_mask_to_rivers))
-        self.assertTrue(callable(fix_naturalearth_hydrosheds_incompatibility))
         self.assertTrue(callable(geometries_bbox_overlap))
-        self.assertTrue(callable(remove_internal_polygon))
 
     def test_geometries_bbox_overlap(self):
         bbox1 = (0.0, 10.0, 0.0, 10.0)
@@ -46,7 +39,7 @@ class TestCoastline(unittest.TestCase):
 
     def test_create_land_ocean_mask_invalid_args(self):
         with self.assertRaises(ValueError):
-            create_land_ocean_mask_from_basins("/tmp/out")
+            create_land_ocean_mask_from_hydrobasins("/tmp/out")
 
     def test_remove_internal_polygon(self):
         # Create a polygon with a hole
@@ -83,6 +76,73 @@ class TestCoastline(unittest.TestCase):
         self.assertAlmostEqual(geom_out.GetArea(), 100.0, places=4)
         self.assertEqual(feat_out.GetField("name"), "ContinentWithLake")
         ds_out = None
+
+    def test_simplify_vector_geometry(self):
+        from hexwatershed_utility.preprocess.feature.coastline import simplify_vector_geometry
+
+        srs = osr.SpatialReference()
+        srs.ImportFromEPSG(4326)
+
+        driver = ogr.GetDriverByName("GeoJSON")
+        in_geojson = os.path.join(self.temp_dir.name, "complex_poly.geojson")
+        ds = driver.CreateDataSource(in_geojson)
+        layer = ds.CreateLayer("land", srs, ogr.wkbPolygon)
+
+        # Polygon with many intermediate redundant collinear points along an edge
+        wkt_complex = "POLYGON ((0 0, 1 0, 2 0, 3 0, 4 0, 5 0, 5 5, 0 5, 0 0))"
+        geom = ogr.CreateGeometryFromWkt(wkt_complex)
+        feat = ogr.Feature(layer.GetLayerDefn())
+        feat.SetGeometry(geom)
+        layer.CreateFeature(feat)
+        ds = None
+
+        out_geojson = os.path.join(self.temp_dir.name, "simplified_poly.geojson")
+        simplify_vector_geometry(in_geojson, out_geojson, dTolerance=0.01)
+        self.assertTrue(os.path.exists(out_geojson))
+
+        ds_out = ogr.Open(out_geojson)
+        layer_out = ds_out.GetLayer(0)
+        feat_out = layer_out.GetFeature(0)
+        ring_out = feat_out.GetGeometryRef().GetGeometryRef(0)
+        # Originally 9 points, should simplify down to 5 points (a rectangle)
+        self.assertLess(ring_out.GetPointCount(), 9)
+        self.assertEqual(ring_out.GetPointCount(), 5)
+        ds_out = None
+
+    def test_create_land_ocean_mask_from_naturalearth_vector_only(self):
+        srs = osr.SpatialReference()
+        srs.ImportFromEPSG(4326)
+
+        driver = ogr.GetDriverByName("GeoJSON")
+        in_geojson = os.path.join(self.temp_dir.name, "test_input_land.geojson")
+        ds = driver.CreateDataSource(in_geojson)
+        layer = ds.CreateLayer("land", srs, ogr.wkbPolygon)
+
+        # Polygon of reasonable size
+        wkt = "POLYGON ((10 10, 12 10, 12 12, 10 12, 10 10))"
+        geom = ogr.CreateGeometryFromWkt(wkt)
+        feat = ogr.Feature(layer.GetLayerDefn())
+        feat.SetGeometry(geom)
+        layer.CreateFeature(feat)
+        ds = None
+
+        sFilename_buf_out = os.path.join(self.temp_dir.name, "test_buffered.geojson")
+        tif_out, vec_out = create_land_ocean_mask_from_naturalearth(
+            sWorkspace_output=self.temp_dir.name,
+            sFilename_land_vector_in=in_geojson,
+            dThreshold_area_island=0.0,
+            iFlag_simplify_coastline=True,
+            dDistance_buffer_meter=5000.0,
+            sFilename_vector_out=sFilename_buf_out,
+            iFlag_convert_raster=False,
+        )
+
+        self.assertIsNone(tif_out)
+        self.assertEqual(vec_out, sFilename_buf_out)
+        self.assertTrue(os.path.exists(sFilename_buf_out))
+        ds_buf = ogr.Open(sFilename_buf_out)
+        self.assertGreater(ds_buf.GetLayer(0).GetFeatureCount(), 0)
+        ds_buf = None
 
 
 if __name__ == "__main__":

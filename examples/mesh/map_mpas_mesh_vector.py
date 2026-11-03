@@ -3,12 +3,12 @@ from pyearthviz.map.vector.map_multiple_vector_files import map_multiple_vector_
 aFiletype_in = [3, 1]
 aFilename_in = []
 
-sFilename_mesh = "/Users/changliao/scratch/earthmesh/huanghe/mpas20261101001/mpas.geojson"
+sFilename_mesh = "/Users/changliao/scratch/earthmesh/huanghe/mpas20261101002/mpas.geojson"
 sFilename_river_raw = "/Users/changliao/scratch/earthmesh/huanghe/river_network/3.00E+03_6.40E+09/cropped_river_network_simplified_3.00E+03_6.40E+09.geojson"
 aFilename_in.append(sFilename_mesh)
 aFilename_in.append(sFilename_river_raw)
 
-sFilename_out = "/Users/changliao/scratch/earthmesh/huanghe/mpas20261101001/mpas_river_map.png"
+sFilename_out = "/Users/changliao/scratch/earthmesh/huanghe/mpas20261101002/mpas_river_map.png"
 
 map_multiple_vector_files(
     aFiletype_in,

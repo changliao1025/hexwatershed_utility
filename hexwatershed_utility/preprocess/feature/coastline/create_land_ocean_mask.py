@@ -133,139 +133,267 @@ def create_land_ocean_mask_from_hydrobasins(
     return sFilename_tif_wo_island, sFilename_vector_parquet_merged
 
 
-def create_land_ocean_mask_from_shoreline(
+def simplify_vector_geometry(
+    sFilename_vector_in: str,
+    sFilename_vector_out: str,
+    dTolerance: float = 0.001,
+    verbose: bool = False,
+) -> None:
+    """
+    Simplify polygon geometries in a vector file while preserving topology.
+
+    Uses GDAL/OGR topology-preserving Douglas-Peucker simplification.
+    """
+    from osgeo import ogr
+    from pyearth.gis.gdal.gdal_vector_format_support import get_vector_format_from_filename
+
+    pInDs = ogr.Open(sFilename_vector_in, 0)
+    if pInDs is None:
+        raise RuntimeError(f"Could not open input vector dataset: {sFilename_vector_in}")
+
+    pInLayer = pInDs.GetLayer()
+    try:
+        driver_name = get_vector_format_from_filename(sFilename_vector_out)
+    except Exception:
+        driver_name = "GeoJSON"
+    pDriver = ogr.GetDriverByName(driver_name)
+    if pDriver is None:
+        pDriver = ogr.GetDriverByName("GeoJSON")
+
+    if os.path.exists(sFilename_vector_out):
+        try:
+            os.remove(sFilename_vector_out)
+        except Exception:
+            pass
+
+    pOutDs = pDriver.CreateDataSource(sFilename_vector_out)
+    if pOutDs is None:
+        pInDs = None
+        raise RuntimeError(f"Failed to create output datasource: {sFilename_vector_out}")
+
+    pOutLayer = pOutDs.CreateLayer(
+        pInLayer.GetName(),
+        srs=pInLayer.GetSpatialRef(),
+        geom_type=pInLayer.GetGeomType(),
+    )
+    in_defn = pInLayer.GetLayerDefn()
+    for i in range(in_defn.GetFieldCount()):
+        pOutLayer.CreateField(in_defn.GetFieldDefn(i))
+
+    pFeat = pInLayer.GetNextFeature()
+    while pFeat:
+        geom = pFeat.GetGeometryRef()
+        if geom is not None and not geom.IsEmpty():
+            simplified_geom = geom.SimplifyPreserveTopology(dTolerance)
+            out_feat = ogr.Feature(pOutLayer.GetLayerDefn())
+            out_feat.SetGeometry(simplified_geom if simplified_geom is not None else geom)
+            for i in range(in_defn.GetFieldCount()):
+                out_feat.SetField(i, pFeat.GetField(i))
+            pOutLayer.CreateFeature(out_feat)
+            out_feat = None
+        pFeat = pInLayer.GetNextFeature()
+
+    pInDs = None
+    pOutDs = None
+
+
+def create_land_ocean_mask_from_naturalearth(
     sWorkspace_output: str,
     sFilename_land_vector_in: Optional[str] = None,
+    sResolution_nature_earth: str = "10m",
+    iFlag_antarctic: int = 0,
     dResolution_x: float = 30 / 3600.0,
     dResolution_y: float = 30 / 3600.0,
     dThreshold_area_island: float = 1000.0,
     iRaster_buffer_pixel: int = 1,
     iFlag_remove_internal_rings: bool = False,
-) -> Tuple[str, str]:
+    iFlag_simplify_coastline: bool = False,
+    dTolerance_simplify: float = 0.001,
+    dDistance_buffer_meter: Optional[float] = None,
+    iFlag_simplify_buffer: int = 1,
+    sFilename_vector_out: Optional[str] = None,
+    iFlag_convert_raster: bool = True,
+    verbose: bool = False,
+) -> Tuple[Optional[str], str]:
     """
-    Create land-ocean mask from global shoreline vector data (e.g. Natural Earth).
+    Create land-ocean mask from Natural Earth dataset or vector shoreline.
 
-    Filters small islands, optionally removes internal lakes/holes, rasterizes, and fixes
-    antimeridian dateline seam issues.
+    Filters small islands, optionally removes internal lakes/holes, optionally simplifies
+    coastlines, optionally creates geodesic buffer zones, and optionally rasterizes to GeoTIFF.
 
     Parameters
     ----------
     sWorkspace_output : str
         Directory to save outputs.
     sFilename_land_vector_in : Optional[str], default=None
-        Path to land shoreline vector file. If None, auto-downloads Natural Earth 10m land.
+        Path to land shoreline vector file. If None, auto-downloads Natural Earth land.
+    sResolution_nature_earth : str, default='10m'
+        Natural Earth resolution ('10m', '50m', or '110m') if downloading.
+    iFlag_antarctic : int, default=0
+        Include Antarctic coastline (0: exclude, 1: include).
     dResolution_x : float, default=30/3600.0
-        X-resolution in degrees.
+        X-resolution in degrees for rasterization.
     dResolution_y : float, default=30/3600.0
-        Y-resolution in degrees.
+        Y-resolution in degrees for rasterization.
     dThreshold_area_island : float, default=1000.0
-        Minimum area threshold in km² for island filtering.
+        Minimum area threshold in m² for island filtering.
     iRaster_buffer_pixel : int, default=1
         Number of pixels to buffer the raster coastline.
     iFlag_remove_internal_rings : bool, default=False
-        If True, removes interior rings (inland lakes) from land polygons so entire continents
-        are treated as continuous land. If False (default), retains interior rings.
+        If True, removes interior rings (inland lakes) from land polygons.
+    iFlag_simplify_coastline : bool, default=False
+        If True, simplifies coastline geometries using topology-preserving Douglas-Peucker.
+    dTolerance_simplify : float, default=0.001
+        Simplification tolerance in degrees.
+    dDistance_buffer_meter : Optional[float], default=None
+        Buffer distance in meters for geodesic vector buffering via pyearthbuffer.
+    iFlag_simplify_buffer : int, default=1
+        If 1, dissolve overlapping vector buffers.
+    sFilename_vector_out : Optional[str], default=None
+        Destination file path for output vector file. If None, auto-generated in sWorkspace_output.
+    iFlag_convert_raster : bool, default=True
+        If True, converts to global raster GeoTIFF. If False, skips rasterization.
+    verbose : bool, default=False
+        Verbosity level.
 
     Returns
     -------
-    Tuple[str, str]
-        (Path to output raster GeoTIFF with antimeridian fixed, Path to cleaned vector GeoJSON).
+    Tuple[Optional[str], str]
+        (Path to output raster GeoTIFF or None, Path to cleaned/buffered vector file).
     """
     os.makedirs(sWorkspace_output, exist_ok=True)
 
     if sFilename_land_vector_in is None:
         sFilename_raw = os.path.join(sWorkspace_output, "land_ocean_mask_naturalearth.geojson")
-        create_land_ocean_vector_mask_naturalearth(sFilename_raw)
-    else:
-        sFilename_raw = sFilename_land_vector_in
-
-    # Filter small islands
-    sFilename_wo_island = os.path.join(sWorkspace_output, "land_ocean_mask_wo_island.geojson")
-    remove_small_polygon(sFilename_raw, sFilename_wo_island, dThreshold_area_island)
-
-    # Remove internal rings (inland lakes) if requested
-    if iFlag_remove_internal_rings:
-        sFilename_vector_processed = os.path.join(
-            sWorkspace_output, "land_ocean_mask_wo_internal_ring.geojson"
+        create_land_ocean_vector_mask_naturalearth(
+            sFilename_raw,
+            sResolution_coastal=sResolution_nature_earth,
+            iFlag_exclude_antarctica=not bool(iFlag_antarctic),
+            dThreshold_area_island=dThreshold_area_island,
+            iFlag_remove_internal_rings=iFlag_remove_internal_rings,
         )
-        remove_internal_polygon(sFilename_wo_island, sFilename_vector_processed)
+        sFilename_vector_cleaned = sFilename_raw
     else:
-        sFilename_vector_processed = sFilename_wo_island
+        sFilename_vector_cleaned = sFilename_land_vector_in
+        if dThreshold_area_island is not None and dThreshold_area_island > 0:
+            sFilename_wo_island = os.path.join(
+                sWorkspace_output, "land_ocean_mask_wo_island.geojson"
+            )
+            remove_small_polygon(
+                sFilename_vector_cleaned, sFilename_wo_island, dThreshold_area_island
+            )
+            sFilename_vector_cleaned = sFilename_wo_island
 
-    # Convert to global raster
-    sFilename_tif_wo_island = os.path.join(sWorkspace_output, "land_ocean_mask_wo_island.tif")
-    convert_vector_to_global_raster(
-        sFilename_vector_processed,
-        sFilename_tif_wo_island,
-        dResolution_x,
-        dResolution_y,
-        iFlag_boundary_only_in=0,
-        dFill_value_in=2,
-    )
+        if iFlag_remove_internal_rings:
+            sFilename_wo_rings = os.path.join(
+                sWorkspace_output, "land_ocean_mask_wo_internal_ring.geojson"
+            )
+            remove_internal_polygon(sFilename_vector_cleaned, sFilename_wo_rings)
+            sFilename_vector_cleaned = sFilename_wo_rings
 
-    # Buffer raster and fix antimeridian wrapping
-    if iRaster_buffer_pixel > 0:
-        sFilename_buffered = os.path.join(
-            sWorkspace_output, "land_ocean_mask_wo_island_buffered.tif"
+    # Coastline simplification
+    if iFlag_simplify_coastline:
+        sFilename_simplified = os.path.join(sWorkspace_output, "land_ocean_mask_simplified.geojson")
+        simplify_vector_geometry(
+            sFilename_vector_cleaned,
+            sFilename_simplified,
+            dTolerance=dTolerance_simplify,
+            verbose=verbose,
         )
-        create_raster_buffer_zone(
+        sFilename_vector_current = sFilename_simplified
+    else:
+        sFilename_vector_current = sFilename_vector_cleaned
+
+    # Vector buffering
+    if dDistance_buffer_meter is not None and dDistance_buffer_meter > 0:
+        if sFilename_vector_out is None:
+            sFilename_vector_final = os.path.join(
+                sWorkspace_output, "land_ocean_mask_buffered.geojson"
+            )
+        else:
+            sFilename_vector_final = sFilename_vector_out
+
+        gcsbuffer_file(
+            input_file=sFilename_vector_current,
+            output_file=sFilename_vector_final,
+            distance=dDistance_buffer_meter,
+            dissolve=bool(iFlag_simplify_buffer),
+            min_area=dThreshold_area_island,
+            verbose=verbose,
+        )
+    else:
+        if sFilename_vector_out is not None and sFilename_vector_out != sFilename_vector_current:
+            # Copy or convert to requested output format/destination
+            from osgeo import ogr
+            from pyearth.gis.gdal.gdal_vector_format_support import get_vector_format_from_filename
+
+            pInDs = ogr.Open(sFilename_vector_current, 0)
+            driver_name = get_vector_format_from_filename(sFilename_vector_out)
+            pDriver = ogr.GetDriverByName(driver_name)
+            if pDriver is not None and pInDs is not None:
+                if os.path.exists(sFilename_vector_out):
+                    try:
+                        os.remove(sFilename_vector_out)
+                    except Exception:
+                        pass
+                pDriver.CopyDataSource(pInDs, sFilename_vector_out)
+                pInDs = None
+            sFilename_vector_final = sFilename_vector_out
+        else:
+            sFilename_vector_final = sFilename_vector_current
+
+    # Raster conversion
+    sFilename_fixed: Optional[str] = None
+    if iFlag_convert_raster:
+        sFilename_tif_wo_island = os.path.join(sWorkspace_output, "land_ocean_mask_wo_island.tif")
+        convert_vector_to_global_raster(
+            sFilename_vector_current,
             sFilename_tif_wo_island,
-            sFilename_buffered,
-            1,
-            int(iRaster_buffer_pixel),
-        )
-        sFilename_fixed = os.path.join(
-            sWorkspace_output, "land_ocean_mask_wo_island_buffered_fixed.tif"
-        )
-        fix_raster_antimeridian_issue(
-            sFilename_buffered,
-            sFilename_fixed,
-            1,
-            2,
-            iRaster_buffer_pixel,
-        )
-    else:
-        sFilename_fixed = os.path.join(
-            sWorkspace_output, "land_ocean_mask_wo_island_buffered_fixed.tif"
-        )
-        fix_raster_antimeridian_issue(
-            sFilename_tif_wo_island,
-            sFilename_fixed,
-            1,
-            2,
-            1,
+            dResolution_x,
+            dResolution_y,
+            iFlag_boundary_only_in=0,
+            dFill_value_in=2,
         )
 
-    logger.info("Completed land-ocean mask from shoreline: %s", sFilename_fixed)
-    return sFilename_fixed, sFilename_vector_processed
+        # Buffer raster and fix antimeridian wrapping
+        if iRaster_buffer_pixel > 0:
+            sFilename_buffered = os.path.join(
+                sWorkspace_output, "land_ocean_mask_wo_island_buffered.tif"
+            )
+            create_raster_buffer_zone(
+                sFilename_tif_wo_island,
+                sFilename_buffered,
+                1,
+                int(iRaster_buffer_pixel),
+            )
+            sFilename_fixed = os.path.join(
+                sWorkspace_output, "land_ocean_mask_wo_island_buffered_fixed.tif"
+            )
+            fix_raster_antimeridian_issue(
+                sFilename_buffered,
+                sFilename_fixed,
+                1,
+                2,
+                iRaster_buffer_pixel,
+            )
+        else:
+            sFilename_fixed = os.path.join(
+                sWorkspace_output, "land_ocean_mask_wo_island_buffered_fixed.tif"
+            )
+            fix_raster_antimeridian_issue(
+                sFilename_tif_wo_island,
+                sFilename_fixed,
+                1,
+                2,
+                1,
+            )
+        logger.info("Completed land-ocean mask from shoreline: %s", sFilename_fixed)
 
+    return sFilename_fixed, sFilename_vector_final
 
-def create_land_ocean_mask_from_naturalearth(
-    sWorkspace_coastline_output: str,
-    dResolution_x_in: float = 30 / 3600.0,
-    dResolution_y_in: float = 30 / 3600.0,
-    dThreshold_area_island: float = 1000.0,
-    dResolution_coastline_buffer: float = 10.0,
-    iRaster_buffer_pixel: int = 1,
-) -> Tuple[str, str]:
-    """Create land-ocean mask from Natural Earth dataset."""
-    return create_land_ocean_mask_from_shoreline(
-        sWorkspace_output=sWorkspace_coastline_output,
-        sFilename_land_vector_in=None,
-        dResolution_x=dResolution_x_in,
-        dResolution_y=dResolution_y_in,
-        dThreshold_area_island=dThreshold_area_island,
-        iRaster_buffer_pixel=iRaster_buffer_pixel,
-        iFlag_remove_internal_rings=True,
-    )
-
-
-create_land_ocean_mask = create_land_ocean_mask_from_naturalearth
 
 __all__ = [
-    "create_land_ocean_mask",
     "create_land_ocean_mask_from_hydrobasins",
     "create_land_ocean_mask_from_naturalearth",
-    "create_land_ocean_mask_from_shoreline",
-    "remove_internal_polygon",
+    "simplify_vector_geometry",
 ]

@@ -5,7 +5,9 @@ from watershed basin boundaries (e.g., HydroBASINS or regional basins).
 
 import os
 
-from hexwatershed_utility.preprocess.feature.coastline import create_land_ocean_mask_from_basins
+from hexwatershed_utility.preprocess.feature.coastline import (
+    create_land_ocean_mask_from_hydrobasins,
+)
 
 
 def main():
@@ -17,7 +19,7 @@ def main():
     sFolder_basins = os.path.expanduser("~/data/hydrobasins")
 
     if os.path.exists(sFolder_basins):
-        sFilename_tif, sFilename_buffer_parquet = create_land_ocean_mask_from_basins(
+        sFilename_tif, sFilename_buffer_parquet = create_land_ocean_mask_from_hydrobasins(
             sWorkspace_output=sWorkspace_output,
             sFolder_boundary_in=sFolder_basins,
             sLevel="lev03",
